@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
+
+import pydantic
 
 
 class LLMClient(Protocol):
-    def complete_json(self, system: str, user: str) -> dict[str, Any]:
-        """Chama o modelo e devolve o JSON da resposta já parseado."""
+    def generate[T: pydantic.BaseModel](self, system: str, user: str, output_type: type[T]) -> T:
+        """Chama o modelo e devolve a resposta validada como `output_type`."""
+        ...

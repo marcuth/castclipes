@@ -92,13 +92,18 @@ class Settings(BaseSettings):
     render_threads: int = 4
     max_source_height: int = 1080
 
-    # ---------- IA (qualquer API compatível com OpenAI) ----------
-    ai_provider: Literal["openai_compatible"] = "openai_compatible"
-    ai_base_url: str = "https://api.openai.com/v1"
+    # ---------- IA (AI SDK para Python, pacote `ai`) ----------
+    ai_provider: str = "openai"
+    """ID de provedor do models.dev: openai, anthropic, groq, openrouter, ..."""
+    ai_base_url: str = ""
+    """Vazio = padrão do provedor. Preencha para Ollama, vLLM, proxies, etc."""
     ai_api_key: str = ""
+    """Vazio = o SDK lê a variável do provedor (ex.: OPENAI_API_KEY)."""
     ai_model: str = "gpt-4.1-mini"
+    ai_protocol: Literal["auto", "chat_completions", "responses"] = "auto"
+    """auto = chat completions quando AI_BASE_URL está definido (Ollama, vLLM, proxies só
+    suportam esse); senão o padrão do provedor (OpenAI usa a Responses API)."""
     ai_temperature: float = 0.3
-    ai_timeout_seconds: float = 120.0
 
     # ---------- Transcrição ----------
     transcript_languages: CsvList = Field(default_factory=lambda: ["pt", "pt-BR"])
