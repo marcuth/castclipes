@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Protocol
+from typing import Literal, Protocol
+
+import pydantic
 
 from ..ai.base import LLMClient
 from ..models import ClipCandidate, ClipPattern, SourceVideo, Transcript
@@ -24,31 +26,39 @@ Centrão...), emoção forte, começo e fim naturais, e envolvem Renan Santos, A
 Kim Kataguiri, MBL ou Partido Missão como protagonistas ou alvo.
 Evite: recados genéricos, avisos de live, trechos sem tema claro, propaganda.
 
-Responda SOMENTE JSON: {"clips":[{"start":<seg>,"end":<seg>,"topic":"...","pattern":
-"reaction|response|revelation|debate|other","speakers":["..."],"target":"terceiro visado ou null",
-"score":0.0-1.0,"summary":"1-2 frases opinativas, tom do canal"}]}
-Tempos em segundos, conforme os marcadores [Ns] da transcrição. Sem sobreposição."""
+Tempos em segundos, conforme os marcadores [Ns] da transcrição. Sem sobreposição.
+"""
 
 
 class ClipSelector(Protocol):
     def select(self, video: SourceVideo, transcript: Transcript) -> list[ClipCandidate]: ...
 
 
-def _parse_candidate(raw: dict[str, Any]) -> ClipCandidate | None:
-    try:
-        pattern = raw.get("pattern", "other")
+class ClipSuggestion(pydantic.BaseModel):
+    start: float
+    end: float
+    topic: str
+    pattern: Literal["reaction", "response", "revelation", "debate", "other"]
+    speakers: list[str]
+    target: str | None
+    score: float
+    summary: str
+
+    def to_candidate(self) -> ClipCandidate:
         return ClipCandidate(
-            start=float(raw["start"]),
-            end=float(raw["end"]),
-            topic=str(raw.get("topic", "")).strip(),
-            score=max(0.0, min(1.0, float(raw.get("score", 0)))),
-            pattern=ClipPattern(pattern) if pattern in ClipPattern._value2member_map_ else ClipPattern.OTHER,
-            speakers=tuple(str(s) for s in raw.get("speakers") or []),
-            target=(str(raw["target"]).strip() or None) if raw.get("target") else None,
-            summary=str(raw.get("summary", "")).strip(),
+            start=self.start,
+            end=self.end,
+            topic=self.topic.strip(),
+            score=max(0.0, min(1.0, self.score)),
+            pattern=ClipPattern(self.pattern),
+            speakers=tuple(self.speakers),
+            target=(self.target or "").strip() or None,
+            summary=self.summary.strip(),
         )
-    except (KeyError, TypeError, ValueError):
-        return None
+
+
+class ClipSuggestions(pydantic.BaseModel):
+    clips: list[ClipSuggestion]
 
 
 class LLMClipSelector:
@@ -78,13 +88,13 @@ class LLMClipSelector:
                 f"Regras: cada corte entre {int(self._rules.min_seconds)}s e "
                 f"{int(self._rules.max_seconds)}s (ideal ~{self._target}s). "
                 f"No máximo {self._rules.max_clips} cortes. Só inclua cortes com score >= "
-                f"{self._rules.min_score}. Se nada prestar, devolva {{\"clips\":[]}}.\n\n"
+                f"{self._rules.min_score}. Se nada prestar, devolva a lista de cortes vazia.\n\n"
                 f"TRANSCRIÇÃO:\n{excerpt}"
             )
             try:
-                data = self._llm.complete_json(SYSTEM_PROMPT, user)
+                data = self._llm.generate(SYSTEM_PROMPT, user, ClipSuggestions)
             except Exception:
                 logger.exception("IA falhou na janela %s-%s de %s", start, end, video.id)
                 continue
-            raw.extend(c for item in data.get("clips", []) if (c := _parse_candidate(item)))
+            raw.extend(item.to_candidate() for item in data.clips)
         return enforce(raw, transcript, self._rules)

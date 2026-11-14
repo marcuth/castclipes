@@ -51,7 +51,7 @@ Veja `.env.example` (todas comentadas). Destaques:
 - `MIN_KEYWORD_MENTIONS`, `TARGET_KEYWORDS`, `TRIAGE_MIN_SCORE`: relevância e gasto com Whisper.
 - `SILENCE_*`: sensibilidade do corte de silêncio (limiar em dB, pausa mínima, folga mantida).
 - `WATERMARK_*`, `CTA_*`, `OUTRO_PATH`: overlays (PNG com transparência) e vídeo de encerramento.
-- `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`: qualquer API compatível com OpenAI (OpenAI, OpenRouter, Groq, Ollama...).
+- `AI_PROVIDER`, `AI_MODEL`, `AI_BASE_URL`, `AI_API_KEY`: modelo via [AI SDK para Python](https://pypi.org/project/ai/) (Vercel). Qualquer provedor do models.dev; `AI_BASE_URL` serve para Ollama, vLLM e proxies.
 - `MAX_PUBLISH_PER_DAY`, `YOUTUBE_PRIVACY_STATUS`, `PUBLISH_MODE`: publicação.
 
 ## Limitações conhecidas
@@ -60,7 +60,7 @@ Veja `.env.example` (todas comentadas). Destaques:
 - **Direitos autorais**: os cortes reaproveitam conteúdo de terceiros. A descrição sempre credita e linka o vídeo original, mas confirme a política de cada canal-fonte.
 - **moviepy** é lento em vídeos longos (um corte de 20 min em 1080p leva vários minutos). Ajuste `RENDER_PRESET`.
 - **Thumbnails**: `NullThumbnailGenerator` por enquanto (provedor e prompt em aberto).
-- O "AI SDK da Vercel" não tem versão Python oficial; usamos o SDK `openai` com `AI_BASE_URL` configurável, que cobre a maioria dos provedores.
+- O AI SDK para Python (`ai` 0.9) está em beta público; a API pode mudar entre versões.
 
 ## Licença
 

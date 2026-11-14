@@ -6,6 +6,8 @@ import logging
 from dataclasses import dataclass
 from typing import Protocol
 
+import pydantic
+
 from ..ai.base import LLMClient
 from ..models import SourceVideo
 
@@ -17,7 +19,12 @@ Arthur do Val, Kim Kataguiri). Transcrever custa caro, então só aprove vídeos
 provavelmente tenham conteúdo longo e rico, com esses nomes como protagonistas ou alvo
 (entrevistas, lives, debates, reações). Reprove clipes curtos, música, notícias genéricas,
 vídeos sem relação.
-Responda SOMENTE JSON: {"score":0.0-1.0,"reason":"..."}"""
+Dê uma nota de 0.0 a 1.0 e uma justificativa curta."""
+
+
+class TriageVerdict(pydantic.BaseModel):
+    score: float
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -43,9 +50,9 @@ class LLMVideoTriage:
             f"Descrição:\n{video.description[:1500]}"
         )
         try:
-            data = self._llm.complete_json(SYSTEM_PROMPT, user)
-            score = max(0.0, min(1.0, float(data.get("score", 0))))
-            reason = str(data.get("reason", ""))
+            data = self._llm.generate(SYSTEM_PROMPT, user, TriageVerdict)
+            score = max(0.0, min(1.0, data.score))
+            reason = data.reason
         except Exception as exc:
             logger.exception("Triagem falhou para %s", video.id)
             return TriageResult(False, 0.0, f"erro na triagem: {exc}")

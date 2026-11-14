@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Protocol
 
+import pydantic
+
 from ..ai.base import LLMClient
 from ..config import Settings
 from ..models import ClipCandidate, ClipMetadata, ClipPattern, SourceVideo
@@ -21,7 +23,7 @@ PASSANDO VERGONHA. Use só se o conteúdo justificar (sem inventar fatos nem acu
 45 a 80 caracteres. Português do Brasil.
 RESUMO: 1-2 frases opinativas explicando o que acontece no corte.
 TAGS: 8 a 15 tags específicas (falante + variações, alvo, programa/podcast, tema, ano da eleição).
-Responda SOMENTE JSON: {"title":"...","summary":"...","tags":["..."]}"""
+"""
 
 VERB_BY_PATTERN = {
     ClipPattern.REACTION: "reage a",
@@ -30,6 +32,12 @@ VERB_BY_PATTERN = {
     ClipPattern.DEBATE: "debate",
     ClipPattern.OTHER: "fala sobre",
 }
+
+
+class MetadataSuggestion(pydantic.BaseModel):
+    title: str
+    summary: str
+    tags: list[str]
 
 
 class MetadataGenerator(Protocol):
@@ -80,12 +88,10 @@ class LLMMetadataGenerator:
             f"Alvo: {c.target or 'nenhum'}\nResumo prévio: {c.summary}"
         )
         try:
-            data = self._llm.complete_json(SYSTEM_PROMPT, user)
-            title = str(data["title"]).strip()
+            data = self._llm.generate(SYSTEM_PROMPT, user, MetadataSuggestion)
+            title = data.title.strip()
             if title:
-                return title, str(data.get("summary") or c.summary), [
-                    str(t) for t in data.get("tags", [])
-                ]
+                return title, data.summary or c.summary, data.tags
         except Exception:
             logger.exception("IA falhou ao gerar metadados; usando template")
         return self._fallback_title(c), c.summary, [*c.speakers, c.target or "", c.topic]
