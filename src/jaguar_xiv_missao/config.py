@@ -114,6 +114,11 @@ class Settings(BaseSettings):
     """auto = chat completions quando AI_BASE_URL está definido (Ollama, vLLM, proxies só
     suportam esse); senão o padrão do provedor (OpenAI usa a Responses API)."""
     ai_temperature: float = 0.3
+    ai_max_retries: int = 0
+    """Tentativas extras quando a chamada falha (429, 5xx, resposta vazia). 0 = desligado."""
+    ai_retry_delay_seconds: float = 5.0
+    """Espera antes da 1ª nova tentativa; dobra a cada falha, até o teto abaixo."""
+    ai_retry_max_delay_seconds: float = 60.0
 
     # ---------- Transcrição ----------
     transcript_languages: CsvList = Field(default_factory=lambda: ["pt", "pt-BR"])

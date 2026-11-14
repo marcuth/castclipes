@@ -21,7 +21,10 @@ def create_llm_client(settings: Settings) -> LLMClient:
         protocol=_protocol(settings),
     )
     model = ai.Model(id=settings.ai_model, provider=provider)
-    return AiSdkClient(model, settings.ai_temperature)
+    return AiSdkClient(
+        model, settings.ai_temperature, settings.ai_max_retries, settings.ai_retry_delay_seconds,
+        settings.ai_retry_max_delay_seconds,
+    )
 
 
 def _protocol(settings: Settings):
