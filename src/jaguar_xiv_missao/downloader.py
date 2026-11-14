@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .models import SourceVideo
@@ -26,8 +27,11 @@ class VideoDownloader:
         """Completa duração, descrição e estado de live (o RSS não traz duração)."""
         with self._ydl({"skip_download": True}) as ydl:
             info = ydl.extract_info(video.url, download=False)
+        stamp = info.get("release_timestamp") or info.get("timestamp")
         return replace(
             video,
+            published_at=video.published_at
+            or (datetime.fromtimestamp(stamp, UTC) if stamp else None),
             title=info.get("title") or video.title,
             description=info.get("description") or video.description,
             channel_title=info.get("channel") or video.channel_title,

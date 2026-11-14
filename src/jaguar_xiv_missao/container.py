@@ -15,7 +15,7 @@ from .metadata.generator import LLMMetadataGenerator
 from .observers.listeners import LoggingObserver, WebhookObserver
 from .pipeline import Pipeline
 from .publishing.youtube import create_publisher
-from .sources.rss import RssVideoSource
+from .sources.rss import RssVideoSource, ytdlp_playlist
 from .storage.state import StateStore
 from .thumbnails.base import create_thumbnail_generator
 from .transcription.factory import create_fallback_provider, create_primary_provider
@@ -43,7 +43,11 @@ def build_pipeline(settings: Settings) -> Pipeline:
     )
     return Pipeline(
         settings=settings,
-        source=RssVideoSource(settings.source_live_playlist_ids, settings.source_max_age_hours),
+        source=RssVideoSource(
+            settings.source_live_playlist_ids, settings.source_max_age_hours,
+            settings.source_fallback_limit,
+            ytdlp_playlist if settings.source_fallback_limit > 0 else None,
+        ),
         downloader=downloader,
         primary_transcriber=create_primary_provider(settings),
         fallback_transcriber=create_fallback_provider(settings, downloader),

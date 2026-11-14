@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     canal (UC...), convertido automaticamente. O projeto só processa lives (regra fixa)."""
     poll_interval_seconds: int = 900
     source_max_age_hours: int = 48
+    source_fallback_limit: int = 5
+    """Se o RSS do YouTube falhar (404 é comum), lê as N lives mais recentes da playlist via yt-dlp.
+    0 = sem reserva."""
     """Ignora vídeos do feed mais antigos que isso."""
     source_min_duration_seconds: int = 600
     """Ignora vídeos-fonte mais curtos (não há o que cortar)."""

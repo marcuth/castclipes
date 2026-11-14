@@ -110,6 +110,10 @@ class Pipeline:
         # Regra fixa do projeto: só lives encerradas (uploads comuns nunca entram).
         if not force and not video.live_ended:
             return "não é uma live"
+        if not force and video.published_at is not None:
+            age = datetime.now(UTC) - video.published_at
+            if age > timedelta(hours=s.source_max_age_hours):
+                return f"antigo demais ({age.total_seconds() / 3600:.0f}h)"
         duration = video.duration_seconds or 0
         if duration < s.source_min_duration_seconds:
             return f"muito curto ({duration:.0f}s)"
