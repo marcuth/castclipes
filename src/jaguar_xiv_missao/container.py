@@ -8,8 +8,7 @@ from .analysis.selector import LLMClipSelector
 from .analysis.triage import LLMVideoTriage
 from .config import Settings
 from .downloader import VideoDownloader
-from .editing.overlay import create_overlays
-from .editing.renderer import ClipRenderer
+from .editing.render_factory import create_renderer
 from .editing.silence import FfmpegSilenceDetector, NullSilenceDetector
 from .events import EventBus
 from .metadata.generator import LLMMetadataGenerator
@@ -54,11 +53,7 @@ def build_pipeline(settings: Settings) -> Pipeline:
             settings.selection_window_overlap_seconds,
         ),
         silence=silence,
-        renderer=ClipRenderer(
-            create_overlays(settings), settings.outro_path, settings.cta_video_path,
-            settings.render_fps,
-            settings.render_preset, settings.render_crf, settings.render_threads,
-        ),
+        renderer=create_renderer(settings),
         metadata=LLMMetadataGenerator(llm, settings),
         thumbnails=create_thumbnail_generator(settings),
         publisher=create_publisher(settings),

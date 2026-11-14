@@ -24,7 +24,7 @@ Não há formatador configurado (só `ruff check`). Os testes não precisam de r
 
 `container.py::build_pipeline` é o composition root: monta tudo a partir de `config.Settings` (pydantic-settings, lido do `.env`). `pipeline.py::Pipeline` é um dataclass que recebe cada dependência como `Protocol` e orquestra:
 
-RSS (playlist de lives) → `downloader.enrich` (yt-dlp, traz `live_status`) → legenda do YouTube → [sem legenda: triagem por IA → Whisper] → pré-filtro de menções → IA escolhe cortes → regras do `.env` → download do vídeo **completo** (1x) → corte de silêncio → overlays + vídeo de CTA no meio (`editing/insertion.py` escolhe a fronteira de frase) + outro (moviepy) → título/descrição/tags → publicação.
+RSS (playlist de lives) → `downloader.enrich` (yt-dlp, traz `live_status`) → legenda do YouTube → [sem legenda: triagem por IA → Whisper] → pré-filtro de menções → IA escolhe cortes → regras do `.env` → download do vídeo **completo** (1x) → corte de silêncio → overlays + vídeo de CTA no meio (`editing/insertion.py` escolhe a fronteira de frase) + outro (`editing/ffmpeg_renderer.py`: um `filter_complex` só; `RENDER_ENGINE=moviepy` é a reserva lenta) → título/descrição/tags → publicação.
 
 Padrões usados (convenção do projeto: cada ponto de variação é um `Protocol` + implementações + uma factory simples):
 - **Strategy**: `ClipSelector`, `VideoTriage`, `TranscriptProvider`, `SilenceDetector`, `Overlay`, `MetadataGenerator`, `Publisher`, `ThumbnailGenerator`, `LLMClient`.

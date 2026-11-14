@@ -48,24 +48,35 @@ class ImageOverlay:
         self._margin = margin
         self._fit = fit
 
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @property
+    def opacity(self) -> float:
+        return self._opacity
+
+    def placement(
+        self, base: tuple[int, int], item: tuple[int, int]
+    ) -> tuple[tuple[int, int], tuple[int, int]]:
+        """((largura, altura), (x, y)) do overlay sobre um vídeo de tamanho `base`."""
+        size = overlay_size(self._fit, base, item, self._width_pct)
+        if self._fit == "stretch":
+            return size, (0, 0)
+        return size, compute_position(self._position, base, size, self._margin)
+
     def layer(self, base: Any) -> Any:
         from moviepy import ImageClip
 
         clip = ImageClip(str(self._path))
-        size = overlay_size(self._fit, (base.w, base.h), (clip.w, clip.h), self._width_pct)
+        size, pos = self.placement((base.w, base.h), (clip.w, clip.h))
         clip = clip.resized(size)
-        if self._fit == "stretch":
-            x, y = 0, 0
-        else:
-            x, y = compute_position(
-                self._position, (base.w, base.h), (clip.w, clip.h), self._margin
-            )
-        return clip.with_duration(base.duration).with_opacity(self._opacity).with_position((x, y))
+        return clip.with_duration(base.duration).with_opacity(self._opacity).with_position(pos)
 
 
-def create_overlays(settings: Settings) -> list[Overlay]:
+def create_overlays(settings: Settings) -> list[ImageOverlay]:
     """Simple Factory: monta os overlays habilitados no .env, na ordem de empilhamento."""
-    overlays: list[Overlay] = []
+    overlays: list[ImageOverlay] = []
     if settings.watermark_path:
         overlays.append(
             ImageOverlay(

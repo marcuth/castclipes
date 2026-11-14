@@ -1,11 +1,21 @@
-"""Montagem final do corte com moviepy (v2)."""
+"""Montagem final do corte com moviepy (v2). Reserva: o padrão é `ffmpeg_renderer.py`."""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Protocol
 
 from .insertion import to_relative
 from .overlay import Overlay
+
+
+class Renderer(Protocol):
+    def render(
+        self, source: Path, keep: list[tuple[float, float]], out: Path,
+        insert_at: float | None = None,
+    ) -> float:
+        """Monta o corte e devolve a duração final em segundos."""
+        ...
 
 
 class ClipRenderer:

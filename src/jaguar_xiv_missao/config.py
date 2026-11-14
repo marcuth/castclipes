@@ -94,6 +94,8 @@ class Settings(BaseSettings):
     """Vídeo opcional anexado ao fim de cada corte."""
 
     # ---------- Render ----------
+    render_engine: Literal["ffmpeg", "moviepy"] = "ffmpeg"
+    """ffmpeg = filter_complex único (rápido). moviepy = reserva, passa frames pelo Python (lento)."""
     render_fps: int = 30
     render_preset: str = "medium"
     render_crf: int = 21

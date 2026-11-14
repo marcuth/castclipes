@@ -82,7 +82,7 @@ Veja `.env.example` (todas comentadas). Destaques:
 - **yt-dlp** precisa de um runtime JavaScript (deno ou node) para extrair o YouTube sem formatos faltando. Veja https://github.com/yt-dlp/yt-dlp/wiki/EJS.
 - **Cota do YouTube**: o upload custa ~1.600 unidades; a cota padrão (10.000/dia) comporta ~6 envios/dia. Projetos de API novos e não auditados publicam como privado até passarem pela auditoria do Google.
 - **Direitos autorais**: os cortes reaproveitam conteúdo de terceiros. A descrição sempre credita e linka o vídeo original, mas confirme a política de cada canal-fonte.
-- **moviepy** é lento em vídeos longos (um corte de 20 min em 1080p leva vários minutos). Ajuste `RENDER_PRESET`.
+- **Render**: o padrão é ffmpeg puro (`RENDER_ENGINE=ffmpeg`), bem mais rápido que o moviepy (`RENDER_ENGINE=moviepy`, reserva: passa cada frame pelo Python e leva dezenas de minutos por corte longo). Ajuste `RENDER_PRESET` para trocar tempo por tamanho de arquivo.
 - **Thumbnails**: desligadas por padrão (`THUMBNAIL_PROVIDER=none`). Com `template`, o pipeline amostra frames do corte, detecta rostos (MediaPipe/BlazeFace, do Google), escolhe o frame com rosto bem enquadrado e fundo limpo, dá zoom no rosto e escreve o gancho em Anton via template [xpict.py](https://pypi.org/project/xpict.py/). Sem IA generativa; os limiares de nota (`thumbnails/scoring.py`) ainda não foram calibrados com frames reais das lives.
 - O AI SDK para Python (`ai` 0.9) está em beta público; a API pode mudar entre versões.
 

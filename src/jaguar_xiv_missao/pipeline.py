@@ -13,7 +13,7 @@ from .analysis.triage import VideoTriage
 from .config import Settings
 from .downloader import VideoDownloader
 from .editing.insertion import choose_insert_point
-from .editing.renderer import ClipRenderer
+from .editing.renderer import Renderer
 from .editing.silence import SilenceDetector, plan_keep_ranges
 from .events import (
     ClipPublished,
@@ -47,7 +47,7 @@ class Pipeline:
     triage: VideoTriage
     selector: ClipSelector
     silence: SilenceDetector
-    renderer: ClipRenderer
+    renderer: Renderer
     metadata: MetadataGenerator
     thumbnails: ThumbnailGenerator
     publisher: Publisher
