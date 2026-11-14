@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .insertion import to_relative
 from .overlay import Overlay
 
 
@@ -12,6 +13,7 @@ class ClipRenderer:
         self,
         overlays: list[Overlay],
         outro_path: Path | None,
+        cta_video_path: Path | None,
         fps: int,
         preset: str,
         crf: int,
@@ -19,12 +21,17 @@ class ClipRenderer:
     ) -> None:
         self._overlays = overlays
         self._outro_path = outro_path
+        self._cta_video_path = cta_video_path
         self._fps = fps
         self._preset = preset
         self._crf = crf
         self._threads = threads
 
-    def render(self, source: Path, keep: list[tuple[float, float]], out: Path) -> float:
+    def render(
+        self, source: Path, keep: list[tuple[float, float]], out: Path,
+        insert_at: float | None = None,
+    ) -> float:
+        """`insert_at`: tempo absoluto (no arquivo `source`) onde entra o vídeo de CTA."""
         from moviepy import CompositeVideoClip, VideoFileClip, concatenate_videoclips
 
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -36,6 +43,15 @@ class ClipRenderer:
             final = body
             if self._overlays:
                 final = CompositeVideoClip([body, *(o.layer(body) for o in self._overlays)])
+            cut = to_relative(keep, insert_at) if insert_at is not None else 0.0
+            if self._cta_video_path and 0.5 < cut < final.duration - 0.5:
+                cta = VideoFileClip(str(self._cta_video_path))
+                opened.append(cta)
+                if cta.size != final.size:
+                    cta = cta.resized(final.size)
+                final = concatenate_videoclips(
+                    [final.subclipped(0, cut), cta, final.subclipped(cut)], method="compose"
+                )
             if self._outro_path:
                 outro = VideoFileClip(str(self._outro_path))
                 opened.append(outro)

@@ -71,7 +71,8 @@ Veja `.env.example` (todas comentadas). Destaques:
 - `SOURCE_MIN_DURATION_SECONDS`, `SOURCE_MAX_DURATION_SECONDS`, `SOURCE_MAX_AGE_HOURS`: quais vídeos-fonte entram.
 - `MIN_KEYWORD_MENTIONS`, `TARGET_KEYWORDS`, `TRIAGE_MIN_SCORE`: relevância e gasto com Whisper.
 - `SILENCE_*`: sensibilidade do corte de silêncio (limiar em dB, pausa mínima, folga mantida).
-- `WATERMARK_*`, `CTA_*`, `OUTRO_PATH`: overlays (PNG com transparência) e vídeo de encerramento.
+- `WATERMARK_*`, `OUTRO_PATH`: overlay (PNG com transparência) e vídeo de encerramento. `WATERMARK_FIT=stretch` faz o PNG ocupar o vídeo inteiro (moldura), em qualquer resolução.
+- `CTA_VIDEO_PATH`, `CTA_POSITION_PCT`, `CTA_MIN_CLIP_SECONDS`: vídeo de CTA/anúncio inserido no meio do corte, numa pausa entre frases perto de `CTA_POSITION_PCT` (sem overlays). Cortes curtos não recebem.
 - `AI_PROVIDER`, `AI_MODEL`, `AI_BASE_URL`, `AI_API_KEY`: modelo via [AI SDK para Python](https://pypi.org/project/ai/) (Vercel). Qualquer provedor do models.dev; `AI_BASE_URL` serve para Ollama, vLLM e proxies.
 - `MAX_PUBLISH_PER_DAY`, `YOUTUBE_PRIVACY_STATUS`, `PUBLISH_MODE`: publicação.
 

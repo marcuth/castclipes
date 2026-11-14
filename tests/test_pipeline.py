@@ -56,7 +56,7 @@ class FakeSelector:
 
 
 class FakeRenderer:
-    def render(self, src, keep, out): return 650.0
+    def render(self, src, keep, out, insert_at=None): return 650.0
 
 
 class FakeMetadata:

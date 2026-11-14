@@ -11,6 +11,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 Position = Literal[
     "top-left", "top-right", "bottom-left", "bottom-right", "center", "top-center", "bottom-center"
 ]
+OverlayFit = Literal["width", "stretch"]
 
 
 def _split_csv(value: object) -> object:
@@ -80,12 +81,15 @@ class Settings(BaseSettings):
     watermark_width_pct: float = 0.14
     watermark_opacity: float = 0.85
     watermark_margin_px: int = 24
-    cta_path: Path | None = None
-    """Segundo overlay (ex.: QR code de CTA)."""
-    cta_position: Position = "bottom-right"
-    cta_width_pct: float = 0.07
-    cta_opacity: float = 1.0
-    cta_margin_px: int = 24
+    watermark_fit: OverlayFit = "width"
+    """stretch = ocupa o vídeo inteiro (moldura), esticada à largura e altura do vídeo; ignora
+    posição, largura e margem."""
+    cta_video_path: Path | None = None
+    """Vídeo de CTA/anúncio inserido no meio do corte (sem overlays), numa pausa entre frases."""
+    cta_position_pct: float = 0.5
+    """Ponto do corte (0 a 1) onde o CTA entra; vai para a melhor fronteira de frase perto dele."""
+    cta_min_clip_seconds: float = 480.0
+    """Cortes mais curtos que isso não recebem CTA."""
     outro_path: Path | None = None
     """Vídeo opcional anexado ao fim de cada corte."""
 
@@ -173,7 +177,7 @@ class Settings(BaseSettings):
         return _split_csv(value)
 
     @field_validator(
-        "watermark_path", "cta_path", "outro_path", "thumbnail_font_path", "thumbnail_logo_path",
+        "watermark_path", "cta_video_path", "outro_path", "thumbnail_font_path", "thumbnail_logo_path",
         mode="before",
     )
     @classmethod

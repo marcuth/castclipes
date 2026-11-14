@@ -55,7 +55,8 @@ def build_pipeline(settings: Settings) -> Pipeline:
         ),
         silence=silence,
         renderer=ClipRenderer(
-            create_overlays(settings), settings.outro_path, settings.render_fps,
+            create_overlays(settings), settings.outro_path, settings.cta_video_path,
+            settings.render_fps,
             settings.render_preset, settings.render_crf, settings.render_threads,
         ),
         metadata=LLMMetadataGenerator(llm, settings),

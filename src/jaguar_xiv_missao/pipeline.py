@@ -12,6 +12,7 @@ from .analysis.text import count_mentions
 from .analysis.triage import VideoTriage
 from .config import Settings
 from .downloader import VideoDownloader
+from .editing.insertion import choose_insert_point
 from .editing.renderer import ClipRenderer
 from .editing.silence import SilenceDetector, plan_keep_ranges
 from .events import (
@@ -94,7 +95,7 @@ class Pipeline:
                         continue
                     if source_file is None:  # baixa o vídeo completo uma vez; cortes são locais
                         source_file = self.downloader.download_video(video)
-                    self._make_clip(video, candidate, source_file)
+                    self._make_clip(video, candidate, source_file, transcript)
             finally:
                 self.downloader.cleanup(video.id)
             self.store.mark(video.id, "done")
@@ -149,7 +150,10 @@ class Pipeline:
         mentions = count_mentions(text, self.settings.target_keywords)
         return mentions >= self.settings.min_keyword_mentions
 
-    def _make_clip(self, video: SourceVideo, candidate: ClipCandidate, source_file: Path) -> None:
+    def _make_clip(
+        self, video: SourceVideo, candidate: ClipCandidate, source_file: Path,
+        transcript: Transcript,
+    ) -> None:
         s = self.settings
         stem = f"{video.id}_{int(candidate.start)}_{int(candidate.end)}"
         out = s.output_dir / f"{stem}.mp4"
@@ -161,7 +165,12 @@ class Pipeline:
                 s.silence_keep_padding_seconds,
             )
             keep = [(candidate.start + a, candidate.start + b) for a, b in relative]
-        duration = self.renderer.render(source_file, keep, out)
+        insert_at = None
+        if s.cta_video_path and candidate.duration >= s.cta_min_clip_seconds:
+            insert_at = choose_insert_point(
+                transcript, candidate.start, candidate.end, s.cta_position_pct
+            )
+        duration = self.renderer.render(source_file, keep, out, insert_at=insert_at)
         clip = RenderedClip(candidate, video, out, duration)
         clip.metadata = self.metadata.generate(video, candidate)
         try:
