@@ -61,3 +61,7 @@ Veja `.env.example` (todas comentadas). Destaques:
 - **moviepy** é lento em vídeos longos (um corte de 20 min em 1080p leva vários minutos). Ajuste `RENDER_PRESET`.
 - **Thumbnails**: `NullThumbnailGenerator` por enquanto (provedor e prompt em aberto).
 - O "AI SDK da Vercel" não tem versão Python oficial; usamos o SDK `openai` com `AI_BASE_URL` configurável, que cobre a maioria dos provedores.
+
+## Licença
+
+[MIT](LICENSE)

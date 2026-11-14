@@ -6,6 +6,8 @@ authors = [
     {name = "Marcuth",email = "me@marcuth.dev"}
 ]
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = [
     "pydantic-settings>=2.6",
