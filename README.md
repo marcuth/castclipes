@@ -85,6 +85,10 @@ Veja `.env.example` (todas comentadas). Destaques:
 - **Thumbnails**: desligadas por padrão (`THUMBNAIL_PROVIDER=none`). Com `template`, o pipeline amostra frames do corte, detecta rostos (MediaPipe/BlazeFace, do Google), escolhe o frame com rosto bem enquadrado e fundo limpo, dá zoom no rosto e escreve o gancho em Anton via template [xpict.py](https://pypi.org/project/xpict.py/). Sem IA generativa; os limiares de nota (`thumbnails/scoring.py`) ainda não foram calibrados com frames reais das lives.
 - O AI SDK para Python (`ai` 0.9) está em beta público; a API pode mudar entre versões.
 
+## Aviso
+
+Este é um projeto independente e não oficial. O autor, Marcuth, não tem nenhuma ligação com o MBL ou com o Partido Missão: é apenas um apoiador.
+
 ## Licença
 
 [MIT](LICENSE)
