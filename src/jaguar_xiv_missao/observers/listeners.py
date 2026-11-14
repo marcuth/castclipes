@@ -13,6 +13,7 @@ from ..events import (
     TranscriptReady,
     VideoDiscovered,
     VideoSkipped,
+    VideoWaiting,
 )
 
 logger = logging.getLogger("jaguar")
@@ -23,6 +24,8 @@ class LoggingObserver:
         match event:
             case VideoDiscovered(video):
                 logger.info("Novo vídeo: %s (%s)", video.title, video.id)
+            case VideoWaiting(video, reason):
+                logger.info("Aguardando %s: %s", video.id, reason)
             case VideoSkipped(video, reason):
                 logger.info("Ignorado %s: %s", video.id, reason)
             case TranscriptReady(video, source, segments):

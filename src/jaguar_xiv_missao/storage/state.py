@@ -28,7 +28,7 @@ class StateStore:
 
     def seen(self, video_id: str) -> bool:
         row = self._db.execute("SELECT status FROM videos WHERE id=?", (video_id,)).fetchone()
-        return row is not None and row[0] != "failed"
+        return row is not None and row[0] not in ("failed", "waiting")
 
     def mark(self, video_id: str, status: str, reason: str = "") -> None:
         self._db.execute(
@@ -38,6 +38,22 @@ class StateStore:
             (video_id, status, reason, self._now()),
         )
         self._db.commit()
+
+    def mark_waiting(self, video_id: str, reason: str = "") -> None:
+        """Marca como em espera sem alterar `updated_at` se já estava esperando."""
+        self._db.execute(
+            "INSERT INTO videos(id,status,reason,updated_at) VALUES(?, 'waiting', ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET status='waiting', reason=excluded.reason, "
+            "updated_at=excluded.updated_at WHERE videos.status != 'waiting'",
+            (video_id, reason, self._now()),
+        )
+        self._db.commit()
+
+    def waiting_since(self, video_id: str) -> datetime | None:
+        row = self._db.execute(
+            "SELECT updated_at FROM videos WHERE id=? AND status='waiting'", (video_id,)
+        ).fetchone()
+        return datetime.fromisoformat(row[0]) if row else None
 
     def clip_done(self, source_id: str, start: float, end: float) -> bool:
         row = self._db.execute(

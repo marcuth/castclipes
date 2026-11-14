@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> None:
         elif args.command == "process":
             vid = _video_id(args.video)
             pipeline.store.mark(vid, "failed", "reprocessamento manual")  # libera para reprocessar
-            pipeline.process(SourceVideo(id=vid, title=""))
+            pipeline.process(SourceVideo(id=vid, title=""), force=True)
         else:
             while True:
                 pipeline.run_once()

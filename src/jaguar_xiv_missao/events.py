@@ -30,6 +30,12 @@ class VideoSkipped(Event):
 
 
 @dataclass(frozen=True)
+class VideoWaiting(Event):
+    video: SourceVideo
+    reason: str
+
+
+@dataclass(frozen=True)
 class TranscriptReady(Event):
     video: SourceVideo
     source: str

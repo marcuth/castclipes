@@ -33,8 +33,13 @@ class Settings(BaseSettings):
     """Ignora vídeos do feed mais antigos que isso."""
     source_min_duration_seconds: int = 600
     """Ignora vídeos-fonte mais curtos (não há o que cortar)."""
-    source_max_duration_seconds: int = 4 * 3600
-    skip_live_streams: bool = True
+    source_max_duration_seconds: int = 10 * 3600
+    """Lives do MBL passam de 3 h; ajuste conforme disco e tempo de transcrição."""
+    only_lives: bool = True
+    """Só processa lives (encerradas). Uploads comuns do canal são ignorados."""
+    live_caption_wait_minutes: int = 90
+    """Live encerrada sem legenda: espera isso antes de recorrer ao Whisper, porque o YouTube
+    costuma publicar a legenda automática pouco depois do fim da live."""
 
     # ---------- Relevância ----------
     target_keywords: CsvList = Field(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .analysis.selector import ClipSelector
@@ -22,6 +23,7 @@ from .events import (
     TranscriptReady,
     VideoDiscovered,
     VideoSkipped,
+    VideoWaiting,
 )
 from .metadata.generator import MetadataGenerator
 from .models import ClipCandidate, RenderedClip, SourceVideo, Transcript
@@ -58,16 +60,20 @@ class Pipeline:
                 continue
             self.process(video)
 
-    def process(self, video: SourceVideo) -> None:
+    def process(self, video: SourceVideo, *, force: bool = False) -> None:
+        """`force` ignora as regras de live (usado no comando `process` manual)."""
         s = self.settings
         self.bus.publish(VideoDiscovered(video))
         try:
             video = self.downloader.enrich(video)
-            reason = self._reject_reason(video)
+            if not force and video.live_in_progress:
+                # Sem marcar no estado: a próxima verificação olha de novo.
+                return self.bus.publish(VideoWaiting(video, f"live {video.live_status}"))
+            reason = self._reject_reason(video, force)
             if reason:
                 return self._skip(video, reason)
 
-            transcript = self._transcribe(video)
+            transcript = self._transcribe(video, force)
             if transcript is None:
                 return
             if not self._mentions_enough(video, transcript):
@@ -98,10 +104,10 @@ class Pipeline:
             self.bus.publish(PipelineError(video, exc))
 
     # ---------- etapas ----------
-    def _reject_reason(self, video: SourceVideo) -> str | None:
+    def _reject_reason(self, video: SourceVideo, force: bool = False) -> str | None:
         s = self.settings
-        if video.is_live and s.skip_live_streams:
-            return "transmissão ao vivo/agendada"
+        if s.only_lives and not force and not video.live_ended:
+            return "não é uma live"
         duration = video.duration_seconds or 0
         if duration < s.source_min_duration_seconds:
             return f"muito curto ({duration:.0f}s)"
@@ -109,8 +115,10 @@ class Pipeline:
             return f"muito longo ({duration:.0f}s)"
         return None
 
-    def _transcribe(self, video: SourceVideo) -> Transcript | None:
+    def _transcribe(self, video: SourceVideo, force: bool = False) -> Transcript | None:
         transcript = self.primary_transcriber.fetch(video)
+        if transcript is None and video.live_ended and not force and self._caption_wait(video):
+            return None
         if transcript is None:
             verdict = self.triage.evaluate(video)
             if not verdict.approved:
@@ -122,6 +130,18 @@ class Pipeline:
             return None
         self.bus.publish(TranscriptReady(video, transcript.source, len(transcript.segments)))
         return transcript
+
+    def _caption_wait(self, video: SourceVideo) -> bool:
+        """True se a live acabou há pouco e a legenda automática ainda pode sair."""
+        wait = timedelta(minutes=self.settings.live_caption_wait_minutes)
+        since = self.store.waiting_since(video.id)
+        if since is None:
+            self.store.mark_waiting(video.id, "aguardando legenda da live")
+            since = datetime.now(UTC)
+        if datetime.now(UTC) - since < wait:
+            self.bus.publish(VideoWaiting(video, "aguardando legenda automática da live"))
+            return True
+        return False
 
     def _mentions_enough(self, video: SourceVideo, transcript: Transcript) -> bool:
         text = f"{video.title} {video.description} {transcript.full_text}"

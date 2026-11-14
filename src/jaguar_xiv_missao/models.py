@@ -27,7 +27,17 @@ class SourceVideo:
     channel_title: str = ""
     published_at: datetime | None = None
     duration_seconds: float | None = None
-    is_live: bool = False
+    live_status: str | None = None
+    """Valor do yt-dlp: is_upcoming, is_live, post_live, was_live ou not_live."""
+
+    @property
+    def live_in_progress(self) -> bool:
+        """Live agendada, no ar ou recém-encerrada (gravação ainda sendo processada)."""
+        return self.live_status in {"is_upcoming", "is_live", "post_live"}
+
+    @property
+    def live_ended(self) -> bool:
+        return self.live_status == "was_live"
 
     @property
     def url(self) -> str:

@@ -26,14 +26,13 @@ class VideoDownloader:
         """Completa duração, descrição e estado de live (o RSS não traz duração)."""
         with self._ydl({"skip_download": True}) as ydl:
             info = ydl.extract_info(video.url, download=False)
-        live = bool(info.get("is_live") or info.get("live_status") in {"is_upcoming", "is_live"})
         return replace(
             video,
             title=info.get("title") or video.title,
             description=info.get("description") or video.description,
             channel_title=info.get("channel") or video.channel_title,
             duration_seconds=info.get("duration"),
-            is_live=live,
+            live_status=info.get("live_status"),
         )
 
     def download_video(self, video: SourceVideo) -> Path:

@@ -1,11 +1,15 @@
 # Jaguar XIV - Clipador da Missão/MBL
 
-Funcionário virtual que monitora canais do YouTube (RSS), encontra trechos em que Renan Santos, Arthur do Val, membros do MBL ou o Partido Missão são protagonistas ou alvo, gera cortes e os publica. O formato segue o padrão: cortes longos (10 a 40 min), um assunto por corte, título em caixa alta e descrição com crédito à fonte.
+Funcionário virtual que monitora canais do YouTube (RSS), acompanha **lives** (RSS), espera cada uma terminar, encontra trechos em que Renan Santos, Arthur do Val, membros do MBL ou o Partido Missão são protagonistas ou alvo, gera cortes e os publica. O formato segue o padrão: cortes longos (10 a 40 min), um assunto por corte, título em caixa alta e descrição com crédito à fonte.
 
 ## Fluxo
 
 ```
-RSS -> yt-dlp (metadados) -> legenda do YouTube ──┐
+RSS -> yt-dlp (metadados + live_status)
+   live agendada/no ar/recém-encerrada -> espera, sem marcar no estado
+   upload comum -> ignorado (ONLY_LIVES=true)
+   live encerrada -> legenda do YouTube ──┐
+   (sem legenda: espera LIVE_CAPTION_WAIT_MINUTES)
                                  sem legenda ──> triagem por IA ──> Whisper
                                                                        │
  pré-filtro de menções <───────────────────────────────────────────────┘
@@ -33,7 +37,7 @@ pip install -e .[dev]            # Whisper local é opcional: pip install -e .[w
 copy .env.example .env           # preencha AI_API_KEY e SOURCE_CHANNEL_IDS
 
 python -m jaguar_xiv_missao resolve-channel @TVdoMBL   # descobre o channel_id
-python -m jaguar_xiv_missao process <url-ou-id>        # processa um vídeo (teste)
+python -m jaguar_xiv_missao process <url-ou-id>        # processa um vídeo (ignora as regras de live)
 python -m jaguar_xiv_missao run                        # uma verificação dos feeds
 python -m jaguar_xiv_missao watch                      # loop contínuo
 python -m jaguar_xiv_missao auth-youtube               # login OAuth (PUBLISH_MODE=youtube)
@@ -47,6 +51,7 @@ Comece com `PUBLISH_MODE=dry_run` e confira os arquivos em `data/clips/`.
 Veja `.env.example` (todas comentadas). Destaques:
 
 - `CLIP_MIN_SECONDS`, `CLIP_MAX_SECONDS`, `CLIP_TARGET_SECONDS`, `CLIP_MIN_SCORE`, `MAX_CLIPS_PER_VIDEO`: forma dos cortes.
+- `ONLY_LIVES`, `LIVE_CAPTION_WAIT_MINUTES`: só lives encerradas entram; sem legenda, espera antes de gastar Whisper.
 - `SOURCE_MIN_DURATION_SECONDS`, `SOURCE_MAX_DURATION_SECONDS`, `SOURCE_MAX_AGE_HOURS`: quais vídeos-fonte entram.
 - `MIN_KEYWORD_MENTIONS`, `TARGET_KEYWORDS`, `TRIAGE_MIN_SCORE`: relevância e gasto com Whisper.
 - `SILENCE_*`: sensibilidade do corte de silêncio (limiar em dB, pausa mínima, folga mantida).
@@ -56,6 +61,8 @@ Veja `.env.example` (todas comentadas). Destaques:
 
 ## Limitações conhecidas
 
+- **Lives são processadas depois que terminam**, não em tempo real. Uma live de 3 h baixada em 1080p ocupa vários GB; reduza `MAX_SOURCE_HEIGHT` se faltar disco.
+- **yt-dlp** precisa de um runtime JavaScript (deno ou node) para extrair o YouTube sem formatos faltando. Veja https://github.com/yt-dlp/yt-dlp/wiki/EJS.
 - **Cota do YouTube**: o upload custa ~1.600 unidades; a cota padrão (10.000/dia) comporta ~6 envios/dia. Projetos de API novos e não auditados publicam como privado até passarem pela auditoria do Google.
 - **Direitos autorais**: os cortes reaproveitam conteúdo de terceiros. A descrição sempre credita e linka o vídeo original, mas confirme a política de cada canal-fonte.
 - **moviepy** é lento em vídeos longos (um corte de 20 min em 1080p leva vários minutos). Ajuste `RENDER_PRESET`.

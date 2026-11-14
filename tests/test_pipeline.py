@@ -6,7 +6,7 @@ from pathlib import Path
 from jaguar_xiv_missao.analysis.triage import TriageResult
 from jaguar_xiv_missao.config import Settings
 from jaguar_xiv_missao.editing.silence import NullSilenceDetector
-from jaguar_xiv_missao.events import ClipPublished, EventBus, VideoSkipped
+from jaguar_xiv_missao.events import ClipPublished, EventBus, VideoSkipped, VideoWaiting
 from jaguar_xiv_missao.models import (
     ClipCandidate,
     ClipMetadata,
@@ -26,9 +26,10 @@ class FakeSource:
 
 
 class FakeDownloader:
-    def enrich(self, v): return replace(v, duration_seconds=self.duration)
-    def __init__(self, duration):
+    def enrich(self, v): return replace(v, duration_seconds=self.duration, live_status=self.live_status)
+    def __init__(self, duration, live_status="was_live"):
         self.duration = duration
+        self.live_status = live_status
         self.downloads = 0
         self.cleaned = []
 
@@ -69,14 +70,16 @@ class FakePublisher:
         return PublishResult("yt1", "https://youtu.be/yt1")
 
 
-def build(tmp_path, *, transcript, duration=1800, triage_ok=True, fallback=None, **settings):
+def build(
+    tmp_path, *, transcript, duration=1800, triage_ok=True, fallback=None, live_status="was_live", **settings
+):
     s = Settings(_env_file=None, data_dir=tmp_path, **settings)
     bus, events = EventBus(), []
     bus.subscribe_all(events.append)
     video = SourceVideo(id="v1", title="Renan Santos")
     publisher = FakePublisher()
     pipe = Pipeline(
-        settings=s, source=FakeSource([video]), downloader=FakeDownloader(duration),
+        settings=s, source=FakeSource([video]), downloader=FakeDownloader(duration, live_status),
         primary_transcriber=FakeTranscriber(transcript),
         fallback_transcriber=FakeTranscriber(fallback), triage=FakeTriage(triage_ok),
         selector=FakeSelector(), silence=NullSilenceDetector(), renderer=FakeRenderer(),
@@ -108,14 +111,16 @@ def test_skips_short_source(tmp_path):
 
 
 def test_no_captions_and_triage_rejects(tmp_path):
-    pipe, events, publisher = build(tmp_path, transcript=None, triage_ok=False)
+    pipe, events, publisher = build(tmp_path, transcript=None, triage_ok=False, live_caption_wait_minutes=0)
     pipe.run_once()
     assert not publisher.published
     assert any(isinstance(e, VideoSkipped) and "triagem" in e.reason for e in events)
 
 
 def test_no_captions_triage_ok_uses_whisper(tmp_path):
-    pipe, _, publisher = build(tmp_path, transcript=None, fallback=good_transcript())
+    pipe, _, publisher = build(
+        tmp_path, transcript=None, fallback=good_transcript(), live_caption_wait_minutes=0
+    )
     pipe.run_once()
     assert len(publisher.published) == 1
 
@@ -125,3 +130,49 @@ def test_daily_limit_defers_video(tmp_path):
     pipe.run_once()
     assert not publisher.published and not pipe.store.seen("v1")
     assert pipe.downloader.downloads == 0  # nada baixado quando o limite já estourou
+
+
+def test_live_in_progress_waits_without_marking(tmp_path):
+    for status in ("is_live", "is_upcoming", "post_live"):
+        pipe, events, publisher = build(tmp_path / status, transcript=good_transcript(), live_status=status)
+        pipe.run_once()
+        assert not publisher.published and not pipe.store.seen("v1")
+        assert any(isinstance(e, VideoWaiting) for e in events)
+        assert pipe.downloader.downloads == 0
+
+
+def test_regular_upload_is_ignored_when_only_lives(tmp_path):
+    pipe, events, publisher = build(tmp_path, transcript=good_transcript(), live_status="not_live")
+    pipe.run_once()
+    assert not publisher.published
+    assert any(isinstance(e, VideoSkipped) and "live" in e.reason for e in events)
+
+
+def test_regular_upload_allowed_when_only_lives_disabled(tmp_path):
+    pipe, _, publisher = build(
+        tmp_path, transcript=good_transcript(), live_status="not_live", only_lives=False
+    )
+    pipe.run_once()
+    assert len(publisher.published) == 1
+
+
+def test_ended_live_without_captions_waits_before_whisper(tmp_path):
+    pipe, events, publisher = build(tmp_path, transcript=None, fallback=good_transcript())
+    pipe.run_once()
+    assert not publisher.published and not pipe.store.seen("v1")
+    assert pipe.store.waiting_since("v1") is not None
+    assert any(isinstance(e, VideoWaiting) for e in events)
+
+
+def test_ended_live_without_captions_uses_whisper_after_wait(tmp_path):
+    pipe, _, publisher = build(
+        tmp_path, transcript=None, fallback=good_transcript(), live_caption_wait_minutes=0
+    )
+    pipe.run_once()
+    assert len(publisher.published) == 1
+
+
+def test_manual_process_forces_non_live(tmp_path):
+    pipe, _, publisher = build(tmp_path, transcript=good_transcript(), live_status="not_live")
+    pipe.process(SourceVideo(id="v1", title="t"), force=True)
+    assert len(publisher.published) == 1
