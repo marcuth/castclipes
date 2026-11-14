@@ -26,6 +26,15 @@ Centrão...), emoção forte, começo e fim naturais, e envolvem Renan Santos, A
 Kim Kataguiri, MBL ou Partido Missão como protagonistas ou alvo.
 Evite: recados genéricos, avisos de live, trechos sem tema claro, propaganda.
 
+QUEM É QUEM: a transcrição NÃO identifica quem fala. O canal-fonte pode ser jornalístico ou de
+comentário (um apresentador noticiando, sem a pessoa citada presente). Nesse caso o falante é o
+apresentador/canal, e quem é citado é ASSUNTO (`target`), não falante.
+- `speakers`: só quem comprovadamente fala no trecho (se o próprio texto mostra isso, ex.: se
+  apresenta, é chamado a responder). Na dúvida, devolva lista vazia.
+- NUNCA tire falantes ou nomes do título do vídeo: o título cita convidados, pautas e adversários
+  que podem nem aparecer no trecho. Use só o que está na transcrição da janela.
+- `pattern`: reaction/response/debate só se o texto mostrar isso de fato; senão use "other".
+
 Tempos em segundos, conforme os marcadores [Ns] da transcrição. Sem sobreposição.
 """
 

@@ -18,6 +18,11 @@ SYSTEM_PROMPT = """\
 Você escreve metadados de cortes políticos para YouTube, no padrão do canal "Inevitável Cortes".
 TÍTULO: formato `[PESSOA] [VERBO] [ALVO/ASSUNTO] [GATILHO EMOCIONAL]!`, o nome do falante vem
 primeiro. Verbos típicos: REAGE a, RESPONDE, FALA A VERDADE sobre, REVELA BASTIDORES de, DEBATE.
+FIDELIDADE (regra mais importante): só ponha uma pessoa como autora da fala/reação se a lista de
+"Falantes" a trouxer. Se estiver vazia, ou se o canal de origem for jornalístico/de comentário
+(o apresentador noticia, a pessoa citada não está falando), NÃO atribua a fala a ninguém: faça o
+título sobre o ASSUNTO e o alvo, ex.: `RENAN SANTOS é DESMASCARADO após ...!`, `MBL vira ALVO de ...!`.
+Nunca use nomes do título do vídeo original que não estejam no assunto/resumo do corte.
 Gatilhos que funcionam: BIZARRO, SURTO, HUMILHADO, DESMASCARA, SEM PALAVRAS, SINCERO ATÉ DEMAIS,
 PASSANDO VERGONHA. Use só se o conteúdo justificar (sem inventar fatos nem acusações falsas).
 45 a 80 caracteres. Português do Brasil.
@@ -102,6 +107,7 @@ class LLMMetadataGenerator:
 
     @staticmethod
     def _fallback_title(c: ClipCandidate) -> str:
-        speaker = c.speakers[0] if c.speakers else "MBL"
         subject = c.target or c.topic
-        return f"{speaker} {VERB_BY_PATTERN[c.pattern]} {subject}!"
+        if not c.speakers:
+            return f"{subject}!"
+        return f"{c.speakers[0]} {VERB_BY_PATTERN[c.pattern]} {subject}!"
