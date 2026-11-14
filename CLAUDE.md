@@ -51,5 +51,5 @@ Padrões usados (convenção do projeto: cada ponto de variação é um `Protoco
 
 - Os feeds RSS do YouTube deram 404 no ambiente de desenvolvimento e nunca foram validados ali; a playlist `UULV` foi confirmada via yt-dlp. Se o RSS falhar, `RssVideoSource` só registra o erro e segue.
 - yt-dlp avisa que falta runtime JavaScript (deno/node); sem ele, formatos podem faltar.
-- Thumbnails são só um ponto de extensão (`NullThumbnailGenerator`); provedor e prompt ainda não foram decididos.
+- Thumbnails (`THUMBNAIL_PROVIDER=template`, padrão `none`): sem IA generativa. `thumbnails/template.py::FrameSelector` amostra frames do vídeo **completo** (`source_file`, tempos absolutos), `faces.py` detecta rostos (MediaPipe, modelo baixado para `data/models/` na 1ª vez), `scoring.py` pontua rosto + pouca borda fora do rosto + nitidez, `layout.py` decide zoom e lado do texto, e o template xpict.py desenha. O texto vem de `ClipMetadata.thumbnail_text` (IA) ou do fim do título. Falha na thumbnail não derruba a publicação. Os limiares de `scoring.py` são chutes ainda sem calibração com frames reais.
 - Publicar custa ~1.600 unidades da cota de 10.000/dia da API do YouTube. `PUBLISH_MODE` começa em `dry_run` e `YOUTUBE_PRIVACY_STATUS` em `private`.

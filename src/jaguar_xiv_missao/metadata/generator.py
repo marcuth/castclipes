@@ -23,6 +23,8 @@ PASSANDO VERGONHA. Use só se o conteúdo justificar (sem inventar fatos nem acu
 45 a 80 caracteres. Português do Brasil.
 RESUMO: 1-2 frases opinativas explicando o que acontece no corte.
 TAGS: 8 a 15 tags específicas (falante + variações, alvo, programa/podcast, tema, ano da eleição).
+TEXTO DA THUMBNAIL: o gancho do corte em 2 a 4 palavras (máx. 28 caracteres), sem o nome do
+falante (o rosto já aparece) e sem pontuação final. Ex.: VÍDEO BIZARRO, SURTO AO VIVO, SEM PALAVRAS.
 """
 
 VERB_BY_PATTERN = {
@@ -38,6 +40,7 @@ class MetadataSuggestion(pydantic.BaseModel):
     title: str
     summary: str
     tags: list[str]
+    thumbnail_text: str = ""
 
 
 class MetadataGenerator(Protocol):
@@ -75,12 +78,13 @@ class LLMMetadataGenerator:
         self._description = DescriptionBuilder(settings)
 
     def generate(self, video: SourceVideo, candidate: ClipCandidate) -> ClipMetadata:
-        title_raw, summary, dynamic_tags = self._ask(video, candidate)
+        title_raw, summary, dynamic_tags, thumb_text = self._ask(video, candidate)
         title = format_title(title_raw, self._s.title_max_chars)
         tags = merge_tags(self._s.fixed_tags, dynamic_tags)
-        return ClipMetadata(title, self._description.build(video, summary, list(tags)), tags)
+        description = self._description.build(video, summary, list(tags))
+        return ClipMetadata(title, description, tags, thumb_text.strip().upper()[:40])
 
-    def _ask(self, video: SourceVideo, c: ClipCandidate) -> tuple[str, str, list[str]]:
+    def _ask(self, video: SourceVideo, c: ClipCandidate) -> tuple[str, str, list[str], str]:
         user = (
             f"Vídeo original: {video.title} ({video.channel_title})\n"
             f"Assunto do corte: {c.topic}\nPadrão: {c.pattern.value}\n"
@@ -91,10 +95,10 @@ class LLMMetadataGenerator:
             data = self._llm.generate(SYSTEM_PROMPT, user, MetadataSuggestion)
             title = data.title.strip()
             if title:
-                return title, data.summary or c.summary, data.tags
+                return title, data.summary or c.summary, data.tags, data.thumbnail_text
         except Exception:
             logger.exception("IA falhou ao gerar metadados; usando template")
-        return self._fallback_title(c), c.summary, [*c.speakers, c.target or "", c.topic]
+        return self._fallback_title(c), c.summary, [*c.speakers, c.target or "", c.topic], ""
 
     @staticmethod
     def _fallback_title(c: ClipCandidate) -> str:

@@ -164,9 +164,12 @@ class Pipeline:
         duration = self.renderer.render(source_file, keep, out)
         clip = RenderedClip(candidate, video, out, duration)
         clip.metadata = self.metadata.generate(video, candidate)
-        clip.thumbnail_path = self.thumbnails.generate(
-            video, candidate, clip.metadata, s.output_dir / f"{stem}.jpg"
-        )
+        try:
+            clip.thumbnail_path = self.thumbnails.generate(
+                video, candidate, clip.metadata, s.output_dir / f"{stem}.jpg", source_file
+            )
+        except Exception:  # thumbnail é opcional: nunca derruba a publicação
+            logger.exception("Falha ao gerar a thumbnail de %s; publicando sem ela", video.id)
         self.bus.publish(ClipRendered(clip))
         result = self.publisher.publish(clip)
         self.store.record_clip(

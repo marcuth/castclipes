@@ -147,7 +147,16 @@ class Settings(BaseSettings):
     """A cota padrão da API (10.000/dia, ~1.600 por upload) comporta cerca de 6 envios/dia."""
 
     # ---------- Thumbnails ----------
-    thumbnail_provider: Literal["none"] = "none"
+    thumbnail_provider: Literal["none", "template"] = "none"
+    """template = melhor frame (rosto + fundo limpo, via MediaPipe) + texto em template xpict.
+    Sem IA generativa."""
+    thumbnail_sample_count: int = 24
+    thumbnail_face_min_confidence: float = 0.6
+    thumbnail_max_zoom: float = 1.6
+    thumbnail_accent_color: str = "#FFD400"
+    thumbnail_font_path: Path | None = None
+    """Vazio = Anton (OFL), embutida no pacote."""
+    thumbnail_logo_path: Path | None = None
 
     # ---------- Armazenamento / notificações ----------
     data_dir: Path = Path("data")
@@ -163,7 +172,10 @@ class Settings(BaseSettings):
     def _csv(cls, value: object) -> object:
         return _split_csv(value)
 
-    @field_validator("watermark_path", "cta_path", "outro_path", mode="before")
+    @field_validator(
+        "watermark_path", "cta_path", "outro_path", "thumbnail_font_path", "thumbnail_logo_path",
+        mode="before",
+    )
     @classmethod
     def _empty_path_is_none(cls, value: object) -> object:
         return None if value in ("", None) else value
@@ -171,6 +183,10 @@ class Settings(BaseSettings):
     @property
     def work_dir(self) -> Path:
         return self.data_dir / "work"
+
+    @property
+    def face_model_path(self) -> Path:
+        return self.data_dir / "models" / "blaze_face_short_range.tflite"
 
     @property
     def output_dir(self) -> Path:

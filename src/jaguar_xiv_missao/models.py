@@ -106,6 +106,8 @@ class ClipMetadata:
     title: str
     description: str
     tags: tuple[str, ...]
+    thumbnail_text: str = ""
+    """Gancho curto (3 a 5 palavras) para a thumbnail; vazio = derivado do título."""
 
 
 @dataclass
