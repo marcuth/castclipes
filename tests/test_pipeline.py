@@ -65,8 +65,9 @@ class FakeMetadata:
 
 class FakePublisher:
     def __init__(self): self.published = []
-    def publish(self, clip):
+    def publish(self, clip, publish_at=None):
         self.published.append(clip)
+        self.slots = [*getattr(self, 'slots', []), publish_at]
         return PublishResult("yt1", "https://youtu.be/yt1")
 
 

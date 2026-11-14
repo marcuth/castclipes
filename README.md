@@ -75,6 +75,7 @@ Veja `.env.example` (todas comentadas). Destaques:
 - `CTA_VIDEO_PATH`, `CTA_POSITION_PCT`, `CTA_MIN_CLIP_SECONDS`: vídeo de CTA/anúncio inserido no meio do corte, numa pausa entre frases perto de `CTA_POSITION_PCT` (sem overlays). Cortes curtos não recebem.
 - `AI_PROVIDER`, `AI_MODEL`, `AI_BASE_URL`, `AI_API_KEY`: modelo via [AI SDK para Python](https://pypi.org/project/ai/) (Vercel). Qualquer provedor do models.dev; `AI_BASE_URL` serve para Ollama, vLLM e proxies. `AI_MAX_RETRIES` (opcional, padrão 0) repete chamadas que falham (429, 5xx, resposta vazia) com espera crescente a partir de `AI_RETRY_DELAY_SECONDS`.
 - `MAX_PUBLISH_PER_DAY`, `YOUTUBE_PRIVACY_STATUS`, `PUBLISH_MODE`: publicação.
+- `PUBLISH_SCHEDULE_ENABLED`, `PUBLISH_SLOTS` (ou `PUBLISH_WINDOW_START/END`), `PUBLISH_TIMEZONE`, `PUBLISH_QUEUE_DAYS`: fila de postagem. O corte sobe pronto, mas agendado (`publishAt`) para o próximo horário livre; o YouTube publica na hora marcada. Sem `PUBLISH_SLOTS`, distribui `MAX_PUBLISH_PER_DAY` horários na janela.
 
 ## Limitações conhecidas
 

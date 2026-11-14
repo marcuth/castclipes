@@ -160,6 +160,19 @@ class Settings(BaseSettings):
     max_publish_per_day: int = 5
     """A cota padrão da API (10.000/dia, ~1.600 por upload) comporta cerca de 6 envios/dia."""
 
+    # ---------- Fila de postagem ----------
+    publish_schedule_enabled: bool = False
+    """True = o corte é enviado já pronto, mas agendado (publishAt) para o próximo horário livre."""
+    publish_timezone: str = "America/Sao_Paulo"
+    publish_slots: CsvList = Field(default_factory=list)
+    """Horários HH:MM fixos. Vazio = distribui MAX_PUBLISH_PER_DAY horários na janela abaixo."""
+    publish_window_start: str = "09:00"
+    publish_window_end: str = "22:00"
+    publish_min_lead_minutes: int = 30
+    """Antecedência mínima entre o envio e o horário agendado."""
+    publish_queue_days: int = 3
+    """Até quantos dias à frente a fila aceita cortes; depois disso o pipeline espera."""
+
     # ---------- Thumbnails ----------
     thumbnail_provider: Literal["none", "template"] = "none"
     """template = melhor frame (rosto + fundo limpo, via MediaPipe) + texto em template xpict.
@@ -179,7 +192,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "source_live_playlist_ids", "target_keywords", "transcript_languages", "fixed_tags",
-        "fixed_hashtags", "social_links",
+        "fixed_hashtags", "social_links", "publish_slots",
         mode="before",
     )
     @classmethod

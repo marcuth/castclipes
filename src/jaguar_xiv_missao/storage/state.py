@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 
@@ -21,6 +21,9 @@ class StateStore:
                 PRIMARY KEY (source_id, start, end));
             """
         )
+        columns = {row[1] for row in self._db.execute("PRAGMA table_info(clips)")}
+        if "scheduled_for" not in columns:  # bancos antigos
+            self._db.execute("ALTER TABLE clips ADD COLUMN scheduled_for TEXT")
 
     @staticmethod
     def _now() -> str:
@@ -62,13 +65,26 @@ class StateStore:
         return row is not None
 
     def record_clip(
-        self, source_id: str, start: float, end: float, title: str, youtube_id: str | None
+        self, source_id: str, start: float, end: float, title: str, youtube_id: str | None,
+        scheduled_for: datetime | None = None,
     ) -> None:
         self._db.execute(
-            "INSERT OR REPLACE INTO clips VALUES(?,?,?,?,?,?)",
-            (source_id, start, end, title, youtube_id, self._now()),
+            "INSERT OR REPLACE INTO clips"
+            "(source_id,start,end,title,youtube_id,published_at,scheduled_for) "
+            "VALUES(?,?,?,?,?,?,?)",
+            (source_id, start, end, title, youtube_id, self._now(),
+             scheduled_for.isoformat() if scheduled_for else None),
         )
         self._db.commit()
+
+    def scheduled_times(self) -> list[datetime]:
+        """Horários já ocupados na fila (agendamentos de hoje em diante)."""
+        since = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        rows = self._db.execute(
+            "SELECT scheduled_for FROM clips WHERE scheduled_for IS NOT NULL AND scheduled_for >= ?",
+            (since,),
+        ).fetchall()
+        return [datetime.fromisoformat(r[0]) for r in rows]
 
     def published_today(self) -> int:
         today = datetime.now(UTC).date().isoformat()

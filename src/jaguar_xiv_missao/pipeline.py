@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from .analysis.selector import ClipSelector
 from .analysis.text import count_mentions
@@ -29,6 +30,7 @@ from .events import (
 from .metadata.generator import MetadataGenerator
 from .models import ClipCandidate, RenderedClip, SourceVideo, Transcript
 from .publishing.base import Publisher
+from .publishing.schedule import next_slot
 from .sources.base import VideoSource
 from .storage.state import StateStore
 from .thumbnails.base import ThumbnailGenerator
@@ -91,6 +93,10 @@ class Pipeline:
                     if self.store.published_today() >= s.max_publish_per_day:
                         logger.warning("Limite diário de publicações atingido; retomo amanhã")
                         return  # não marca o vídeo como processado
+                    if s.publish_schedule_enabled and self._next_slot() is None:
+                        logger.warning("Fila de postagem cheia (%d dias); retomo quando liberar",
+                                       s.publish_queue_days)
+                        return
                     if self.store.clip_done(video.id, candidate.start, candidate.end):
                         continue
                     if source_file is None:  # baixa o vídeo completo uma vez; cortes são locais
@@ -184,11 +190,19 @@ class Pipeline:
         except Exception:  # thumbnail é opcional: nunca derruba a publicação
             logger.exception("Falha ao gerar a thumbnail de %s; publicando sem ela", video.id)
         self.bus.publish(ClipRendered(clip))
-        result = self.publisher.publish(clip)
+        slot = self._next_slot() if s.publish_schedule_enabled else None
+        result = self.publisher.publish(clip, publish_at=slot)
         self.store.record_clip(
-            video.id, candidate.start, candidate.end, clip.metadata.title, result.video_id
+            video.id, candidate.start, candidate.end, clip.metadata.title, result.video_id,
+            scheduled_for=slot if result.video_id else None,
         )
+        if slot is not None:
+            logger.info("Agendado para %s (%s)", slot.astimezone(ZoneInfo(s.publish_timezone)),
+                        clip.metadata.title)
         self.bus.publish(ClipPublished(clip, result))
+
+    def _next_slot(self) -> datetime | None:
+        return next_slot(self.store.scheduled_times(), self.settings)
 
     def _skip(self, video: SourceVideo, reason: str) -> None:
         self.store.mark(video.id, "skipped", reason)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..config import Settings
@@ -50,7 +51,9 @@ class YouTubePublisher:
             self._service = build("youtube", "v3", credentials=creds)
         return self._service
 
-    def publish(self, clip: RenderedClip) -> PublishResult:
+    def publish(
+        self, clip: RenderedClip, publish_at: datetime | None = None
+    ) -> PublishResult:
         from googleapiclient.http import MediaFileUpload
 
         meta = clip.metadata
@@ -70,6 +73,10 @@ class YouTubePublisher:
                 "selfDeclaredMadeForKids": False,
             },
         }
+        if publish_at is not None:  # agendado: precisa subir como privado; o YouTube publica na hora
+            body["status"]["privacyStatus"] = "private"
+            stamp = publish_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            body["status"]["publishAt"] = stamp
         media = MediaFileUpload(str(clip.path), chunksize=8 * 1024 * 1024, resumable=True)
         request = self._youtube().videos().insert(
             part="snippet,status", body=body, media_body=media
@@ -90,9 +97,14 @@ class YouTubePublisher:
 class DryRunPublisher:
     """Não envia nada; só registra o que seria publicado."""
 
-    def publish(self, clip: RenderedClip) -> PublishResult:
+    def publish(
+        self, clip: RenderedClip, publish_at: datetime | None = None
+    ) -> PublishResult:
         meta = clip.metadata
-        logger.info("[dry-run] %s\n%s\ntags=%s", meta.title if meta else "?", clip.path, meta.tags if meta else "")
+        logger.info(
+            "[dry-run] %s\n%s\ntags=%s\nagendado para=%s",
+            meta.title if meta else "?", clip.path, meta.tags if meta else "", publish_at,
+        )
         return PublishResult(None, None, dry_run=True)
 
 
