@@ -2,94 +2,74 @@
   <img src="docs/images/jaugar-circle.png" alt="Jaguar XIV" width="200">
 </p>
 
-# Jaguar XIV - Clipador da Missão/MBL
+<h1 align="center">Jaguar XIV</h1>
 
-📺 Canal no YouTube: [@jaguarxiv](https://www.youtube.com/@jaguarxiv)
+<p align="center">
+  <em>Um funcionário virtual que assiste às lives por você e entrega os melhores momentos.</em>
+</p>
 
-Funcionário virtual que monitora canais do YouTube (RSS), acompanha **lives** (RSS), espera cada uma terminar, encontra trechos em que Renan Santos, Arthur do Val, membros do MBL ou o Partido Missão são protagonistas ou alvo, gera cortes e os publica. O formato segue o padrão: cortes longos (10 a 40 min), um assunto por corte, título em caixa alta e descrição com crédito à fonte.
+<p align="center">
+  📺 <a href="https://www.youtube.com/@jaguarxiv">Canal no YouTube: @jaguarxiv</a>
+</p>
 
-## Fluxo
+---
 
-```
-RSS -> yt-dlp (metadados + live_status)
-   live agendada/no ar/recém-encerrada -> espera, sem marcar no estado
-   upload comum -> ignorado (regra fixa no código)
-   live encerrada -> legenda do YouTube ──┐
-   (sem legenda: espera LIVE_CAPTION_WAIT_MINUTES)
-                                 sem legenda ──> triagem por IA ──> Whisper
-                                                                       │
- pré-filtro de menções <───────────────────────────────────────────────┘
- -> IA escolhe cortes (janelas) -> regras do .env (min/max, sem sobreposição)
- -> yt-dlp baixa o vídeo completo (1x) -> corte local + silêncio -> overlays/outro (moviepy)
- -> título/descrição/tags -> YouTube Data API v3
-```
+## O que é isso?
 
-A IA propõe os cortes, mas `analysis/constraints.py` aplica as regras do `.env` (duração mínima/máxima, fronteira de frase, nota mínima, limite por vídeo).
+As lives do MBL, do Renan Santos, do Arthur do Val e do Partido Missão duram horas. Quase ninguém tem tempo de assistir a tudo, e os melhores momentos acabam se perdendo no meio da conversa.
 
-## Design patterns
+O Jaguar XIV é um programa que faz o trabalho de um editor de cortes, sozinho e sem parar:
 
-| Padrão | Onde |
-|---|---|
-| Simple Factory | `ai/factory.py`, `transcription/factory.py`, `editing/overlay.py::create_overlays`, `publishing/youtube.py::create_publisher`, `thumbnails/base.py` |
-| Strategy | `ClipSelector`, `VideoTriage`, `TranscriptProvider`, `SilenceDetector`, `Overlay`, `MetadataGenerator`, `Publisher`, `ThumbnailGenerator` (todos `Protocol`) |
-| Observer | `events.py` (`EventBus`) + `observers/listeners.py` (log, webhook) |
-| Composition root | `container.py` monta o `Pipeline` a partir de `Settings` |
+1. **Fica de olho** nos canais e espera cada live terminar.
+2. **"Assiste"** à live lendo tudo o que foi dito.
+3. **Escolhe os trechos que valem a pena**: um assunto só, do começo ao fim, com conflito, emoção e uma história que se entende sem ter visto o resto.
+4. **Edita o vídeo**: corta o trecho, tira as pausas longas e deixa a fala fluindo, coloca uma moldura com a identidade do canal e encaixa um recado no meio, como um intervalo.
+5. **Escreve o título, a descrição e as tags** e monta a imagem de capa.
+6. **Publica no YouTube**, espalhando os vídeos em horários distribuídos ao longo do dia.
 
-## Uso
+Tudo isso sem ninguém apertar um botão.
 
-```powershell
-python -m venv .venv; .venv\Scripts\activate
-pip install -e .[dev]            # Whisper local é opcional: pip install -e .[whisper]
-copy .env.example .env           # preencha AI_API_KEY e SOURCE_LIVE_PLAYLIST_IDS
+## Como ele decide o que é um bom corte?
 
-python -m jaguar_xiv_missao resolve-channel @TVdoMBL   # descobre o ID da playlist de lives
-python -m jaguar_xiv_missao process <url-ou-id>        # processa um vídeo (ignora as regras de live)
-python -m jaguar_xiv_missao run                        # uma verificação dos feeds
-python -m jaguar_xiv_missao watch                      # loop contínuo
-python -m jaguar_xiv_missao auth-youtube               # login OAuth (PUBLISH_MODE=youtube)
-```
+Ele usa inteligência artificial como um "olheiro": a IA lê a transcrição da live e **sugere** onde estão os melhores momentos. Mas quem tem a última palavra é o código, que segue regras fixas:
 
-Requisitos: ffmpeg no PATH (o moviepy traz um próprio, usado no corte de silêncio).
-Comece com `PUBLISH_MODE=dry_run` e confira os arquivos em `data/clips/`.
+- o corte precisa ter entre 10 e 40 minutos;
+- precisa começar e terminar no fim de uma frase, nunca no meio de uma palavra;
+- precisa ter nota boa;
+- não pode repetir trechos já usados.
 
-## Como descobrir o ID da playlist de lives
+A ideia é simples: **a IA dá a sugestão, o programa confere se a sugestão faz sentido.** Assim, um palpite errado da IA não vira, sozinho, um vídeo ruim.
 
-O projeto só processa **lives** (regra fixa no código). Cada canal tem uma playlist automática só com as lives, cujo ID começa com `UULV`, e o feed RSS dela é `https://www.youtube.com/feeds/videos.xml?playlist_id=<ID>`.
+## A capa do vídeo, sem inventar imagem
 
-- Pelo site: https://newskeeper.pages.dev/tools/youtube-rss
-- Pelo terminal: `python -m jaguar_xiv_missao resolve-channel @TVdoMBL`
-- À mão: pegue o ID do canal (`UC...`) e troque `UC` por `UULV`. O projeto também aceita o ID do canal e faz essa troca sozinho.
+A imagem de capa (thumbnail) **não é gerada por IA**. O programa olha dezenas de momentos do corte, procura o quadro em que o rosto aparece bem enquadrado, com o fundo mais limpo possível, dá um zoom e escreve por cima uma frase curta e chamativa. É o mesmo trabalho que um editor faria à mão, só que automático.
 
-Coloque o resultado em `SOURCE_LIVE_PLAYLIST_IDS` (vários IDs separados por vírgula).
+## O que ele não faz
 
-## Variáveis de ambiente principais
+Honestidade vale mais que propaganda:
 
-Veja `.env.example` (todas comentadas). Destaques:
+- **Não acompanha a live em tempo real.** Ele espera a transmissão acabar para só então trabalhar.
+- **Não sabe quem está falando.** A transcrição vem sem o nome de quem fala, então ele evita afirmar "fulano disse" quando não tem certeza.
+- **Não é perfeito.** A IA erra de vez em quando, e os títulos e cortes passam por ajustes constantes. É um projeto em evolução.
+- **Não é jornalista nem checador de fatos.** Ele recorta o que foi dito nas lives; não verifica nem opina.
 
-- `CLIP_MIN_SECONDS`, `CLIP_MAX_SECONDS`, `CLIP_TARGET_SECONDS`, `CLIP_MIN_SCORE`, `MAX_CLIPS_PER_VIDEO`: forma dos cortes.
-- `SOURCE_LIVE_PLAYLIST_IDS`: playlists de lives monitoradas (veja abaixo). `LIVE_CAPTION_WAIT_MINUTES`: só lives encerradas entram; sem legenda, espera antes de gastar Whisper.
-- `SOURCE_MIN_DURATION_SECONDS`, `SOURCE_MAX_DURATION_SECONDS`, `SOURCE_MAX_AGE_HOURS`: quais vídeos-fonte entram.
-- `MIN_KEYWORD_MENTIONS`, `TARGET_KEYWORDS`, `TRIAGE_MIN_SCORE`: relevância e gasto com Whisper.
-- `SILENCE_*`: sensibilidade do corte de silêncio (limiar em dB, pausa mínima, folga mantida).
-- `WATERMARK_*`, `OUTRO_PATH`: overlay (PNG com transparência) e vídeo de encerramento. `WATERMARK_FIT=stretch` faz o PNG ocupar o vídeo inteiro (moldura), em qualquer resolução.
-- `CTA_VIDEO_PATH`, `CTA_POSITION_PCT`, `CTA_MIN_CLIP_SECONDS`: vídeo de CTA/anúncio inserido no meio do corte, numa pausa entre frases perto de `CTA_POSITION_PCT` (sem overlays). Cortes curtos não recebem.
-- `AI_PROVIDER`, `AI_MODEL`, `AI_BASE_URL`, `AI_API_KEY`: modelo via [AI SDK para Python](https://pypi.org/project/ai/) (Vercel). Qualquer provedor do models.dev; `AI_BASE_URL` serve para Ollama, vLLM e proxies. `AI_MAX_RETRIES` (opcional, padrão 0) repete chamadas que falham (429, 5xx, resposta vazia) com espera crescente a partir de `AI_RETRY_DELAY_SECONDS`.
-- `MAX_PUBLISH_PER_DAY`, `YOUTUBE_PRIVACY_STATUS`, `PUBLISH_MODE`: publicação.
-- `PUBLISH_SCHEDULE_ENABLED`, `PUBLISH_SLOTS` (ou `PUBLISH_WINDOW_START/END`), `PUBLISH_TIMEZONE`, `PUBLISH_QUEUE_DAYS`: fila de postagem. O corte sobe pronto, mas agendado (`publishAt`) para o próximo horário livre; o YouTube publica na hora marcada. Sem `PUBLISH_SLOTS`, distribui `MAX_PUBLISH_PER_DAY` horários na janela.
+## De onde vêm os vídeos?
 
-## Limitações conhecidas
+Os cortes usam o conteúdo das lives originais. Por isso, toda descrição **dá o crédito e o link do vídeo original**: quem quiser ver a conversa completa chega nela com um clique.
 
-- **Lives são processadas depois que terminam**, não em tempo real. Uma live de 3 h baixada em 1080p ocupa vários GB; reduza `MAX_SOURCE_HEIGHT` se faltar disco.
-- **yt-dlp** precisa de um runtime JavaScript (deno ou node) para extrair o YouTube sem formatos faltando. Veja https://github.com/yt-dlp/yt-dlp/wiki/EJS.
-- **Cota do YouTube**: o upload custa ~1.600 unidades; a cota padrão (10.000/dia) comporta ~6 envios/dia. Projetos de API novos e não auditados publicam como privado até passarem pela auditoria do Google.
-- **Direitos autorais**: os cortes reaproveitam conteúdo de terceiros. A descrição sempre credita e linka o vídeo original, mas confirme a política de cada canal-fonte.
-- **Render**: o padrão é ffmpeg puro (`RENDER_ENGINE=ffmpeg`), bem mais rápido que o moviepy (`RENDER_ENGINE=moviepy`, reserva: passa cada frame pelo Python e leva dezenas de minutos por corte longo). Ajuste `RENDER_PRESET` para trocar tempo por tamanho de arquivo.
-- **Thumbnails**: desligadas por padrão (`THUMBNAIL_PROVIDER=none`). Com `template`, o pipeline amostra frames do corte, detecta rostos (MediaPipe/BlazeFace, do Google), escolhe o frame com rosto bem enquadrado e fundo limpo, dá zoom no rosto e escreve o gancho em Anton via template [xpict.py](https://pypi.org/project/xpict.py/). Sem IA generativa; os limiares de nota (`thumbnails/scoring.py`) ainda não foram calibrados com frames reais das lives.
-- O AI SDK para Python (`ai` 0.9) está em beta público; a API pode mudar entre versões.
+## Curiosidades
+
+- Quase tudo roda **no computador de quem opera**, sem depender de serviços de edição de vídeo na nuvem.
+- Foi pensado para seguir o estilo dos canais de cortes que já existem: títulos em caixa alta, cortes longos e um assunto por vídeo.
+- Ele não tem pressa nem sono: se uma live acaba de madrugada, o corte sai pronto e fica na fila para ser publicado no horário certo.
+
+## Quer ver por dentro?
+
+Para quem tem curiosidade técnica, a pasta [`docs/`](docs/README.md) explica o funcionamento em detalhes, assunto por assunto: [como o fluxo funciona](docs/pipeline.md), [como os cortes são escolhidos](docs/clip-selection.md), [como o vídeo é editado](docs/video-editing.md), [como as capas são feitas](docs/thumbnails.md) e [como a publicação é agendada](docs/publishing.md).
 
 ## Aviso
 
-Este é um projeto independente e não oficial. O autor, Marcuth, não tem nenhuma ligação com o MBL ou com o Partido Missão: é apenas um apoiador.
+Este é um projeto **independente e não oficial**. O autor, Marcuth, **não tem nenhuma ligação com o MBL ou com o Partido Missão**: é apenas um apoiador.
 
 ## Licença
 
