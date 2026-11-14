@@ -44,7 +44,7 @@ def build_pipeline(settings: Settings) -> Pipeline:
     )
     return Pipeline(
         settings=settings,
-        source=RssVideoSource(settings.source_channel_ids, settings.source_max_age_hours),
+        source=RssVideoSource(settings.source_live_playlist_ids, settings.source_max_age_hours),
         downloader=downloader,
         primary_transcriber=create_primary_provider(settings),
         fallback_transcriber=create_fallback_provider(settings, downloader),

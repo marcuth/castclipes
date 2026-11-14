@@ -7,7 +7,7 @@ Funcionário virtual que monitora canais do YouTube (RSS), acompanha **lives** (
 ```
 RSS -> yt-dlp (metadados + live_status)
    live agendada/no ar/recém-encerrada -> espera, sem marcar no estado
-   upload comum -> ignorado (ONLY_LIVES=true)
+   upload comum -> ignorado (regra fixa no código)
    live encerrada -> legenda do YouTube ──┐
    (sem legenda: espera LIVE_CAPTION_WAIT_MINUTES)
                                  sem legenda ──> triagem por IA ──> Whisper
@@ -34,9 +34,9 @@ A IA propõe os cortes, mas `analysis/constraints.py` aplica as regras do `.env`
 ```powershell
 python -m venv .venv; .venv\Scripts\activate
 pip install -e .[dev]            # Whisper local é opcional: pip install -e .[whisper]
-copy .env.example .env           # preencha AI_API_KEY e SOURCE_CHANNEL_IDS
+copy .env.example .env           # preencha AI_API_KEY e SOURCE_LIVE_PLAYLIST_IDS
 
-python -m jaguar_xiv_missao resolve-channel @TVdoMBL   # descobre o channel_id
+python -m jaguar_xiv_missao resolve-channel @TVdoMBL   # descobre o ID da playlist de lives
 python -m jaguar_xiv_missao process <url-ou-id>        # processa um vídeo (ignora as regras de live)
 python -m jaguar_xiv_missao run                        # uma verificação dos feeds
 python -m jaguar_xiv_missao watch                      # loop contínuo
@@ -46,12 +46,22 @@ python -m jaguar_xiv_missao auth-youtube               # login OAuth (PUBLISH_MO
 Requisitos: ffmpeg no PATH (o moviepy traz um próprio, usado no corte de silêncio).
 Comece com `PUBLISH_MODE=dry_run` e confira os arquivos em `data/clips/`.
 
+## Como descobrir o ID da playlist de lives
+
+O projeto só processa **lives** (regra fixa no código). Cada canal tem uma playlist automática só com as lives, cujo ID começa com `UULV`, e o feed RSS dela é `https://www.youtube.com/feeds/videos.xml?playlist_id=<ID>`.
+
+- Pelo site: https://newskeeper.pages.dev/tools/youtube-rss
+- Pelo terminal: `python -m jaguar_xiv_missao resolve-channel @TVdoMBL`
+- À mão: pegue o ID do canal (`UC...`) e troque `UC` por `UULV`. O projeto também aceita o ID do canal e faz essa troca sozinho.
+
+Coloque o resultado em `SOURCE_LIVE_PLAYLIST_IDS` (vários IDs separados por vírgula).
+
 ## Variáveis de ambiente principais
 
 Veja `.env.example` (todas comentadas). Destaques:
 
 - `CLIP_MIN_SECONDS`, `CLIP_MAX_SECONDS`, `CLIP_TARGET_SECONDS`, `CLIP_MIN_SCORE`, `MAX_CLIPS_PER_VIDEO`: forma dos cortes.
-- `ONLY_LIVES`, `LIVE_CAPTION_WAIT_MINUTES`: só lives encerradas entram; sem legenda, espera antes de gastar Whisper.
+- `SOURCE_LIVE_PLAYLIST_IDS`: playlists de lives monitoradas (veja abaixo). `LIVE_CAPTION_WAIT_MINUTES`: só lives encerradas entram; sem legenda, espera antes de gastar Whisper.
 - `SOURCE_MIN_DURATION_SECONDS`, `SOURCE_MAX_DURATION_SECONDS`, `SOURCE_MAX_AGE_HOURS`: quais vídeos-fonte entram.
 - `MIN_KEYWORD_MENTIONS`, `TARGET_KEYWORDS`, `TRIAGE_MIN_SCORE`: relevância e gasto com Whisper.
 - `SILENCE_*`: sensibilidade do corte de silêncio (limiar em dB, pausa mínima, folga mantida).

@@ -26,8 +26,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # ---------- Fontes (RSS) ----------
-    source_channel_ids: CsvList = Field(default_factory=list)
-    """IDs de canal (UC...) cujos feeds RSS serão monitorados."""
+    source_live_playlist_ids: CsvList = Field(default_factory=list)
+    """IDs da playlist de LIVES (UULV...) de cada canal monitorado. Aceita também o ID do
+    canal (UC...), convertido automaticamente. O projeto só processa lives (regra fixa)."""
     poll_interval_seconds: int = 900
     source_max_age_hours: int = 48
     """Ignora vídeos do feed mais antigos que isso."""
@@ -35,8 +36,6 @@ class Settings(BaseSettings):
     """Ignora vídeos-fonte mais curtos (não há o que cortar)."""
     source_max_duration_seconds: int = 10 * 3600
     """Lives do MBL passam de 3 h; ajuste conforme disco e tempo de transcrição."""
-    only_lives: bool = True
-    """Só processa lives (encerradas). Uploads comuns do canal são ignorados."""
     live_caption_wait_minutes: int = 90
     """Live encerrada sem legenda: espera isso antes de recorrer ao Whisper, porque o YouTube
     costuma publicar a legenda automática pouco depois do fim da live."""
@@ -156,7 +155,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     @field_validator(
-        "source_channel_ids", "target_keywords", "transcript_languages", "fixed_tags",
+        "source_live_playlist_ids", "target_keywords", "transcript_languages", "fixed_tags",
         "fixed_hashtags", "social_links",
         mode="before",
     )

@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("watch", help="repete `run` a cada POLL_INTERVAL_SECONDS")
     p_video = sub.add_parser("process", help="processa um vídeo específico (URL ou ID)")
     p_video.add_argument("video")
-    p_chan = sub.add_parser("resolve-channel", help="descobre o channel_id de um @handle")
+    p_chan = sub.add_parser("resolve-channel", help="descobre o ID da playlist de lives de um @handle")
     p_chan.add_argument("handle")
     sub.add_parser("auth-youtube", help="faz o login OAuth e salva o token")
     args = parser.parse_args(argv)
@@ -32,9 +32,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "resolve-channel":
         from .downloader import VideoDownloader
+        from .sources.rss import live_playlist_id
 
         channel_id, name = VideoDownloader(settings.work_dir).resolve_channel_id(args.handle)
-        print(f"{channel_id}  # {name}")
+        print(f"{live_playlist_id(channel_id)}  # lives de {name}")
         return
     if args.command == "auth-youtube":
         from .publishing.youtube import load_credentials

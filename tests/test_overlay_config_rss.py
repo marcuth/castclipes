@@ -1,6 +1,6 @@
 from jaguar_xiv_missao.config import Settings
 from jaguar_xiv_missao.editing.overlay import compute_position
-from jaguar_xiv_missao.sources.rss import parse_feed
+from jaguar_xiv_missao.sources.rss import live_playlist_id, parse_feed
 
 FEED = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015"
@@ -21,11 +21,11 @@ def test_positions():
 
 
 def test_settings_csv_and_empty_paths(monkeypatch):
-    monkeypatch.setenv("SOURCE_CHANNEL_IDS", "UC1, UC2")
+    monkeypatch.setenv("SOURCE_LIVE_PLAYLIST_IDS", "UULV1, UC2")
     monkeypatch.setenv("WATERMARK_PATH", "")
     monkeypatch.setenv("CLIP_MIN_SECONDS", "300")
     s = Settings(_env_file=None)
-    assert s.source_channel_ids == ["UC1", "UC2"]
+    assert s.source_live_playlist_ids == ["UULV1", "UC2"]
     assert s.watermark_path is None
     assert s.clip_min_seconds == 300 and s.clip_max_seconds == 2400
 
@@ -34,3 +34,8 @@ def test_parse_feed():
     [video] = parse_feed(FEED)
     assert video.id == "abc123DEF45" and video.channel_title == "TV do MBL"
     assert video.published_at is not None and video.channel_id == "UC1"
+
+
+def test_live_playlist_id_accepts_channel_or_playlist():
+    assert live_playlist_id("UCZYyHef3eBoBEztAOY_Fe_g") == "UULVZYyHef3eBoBEztAOY_Fe_g"
+    assert live_playlist_id(" UULVabc ") == "UULVabc"

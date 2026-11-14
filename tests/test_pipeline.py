@@ -141,19 +141,11 @@ def test_live_in_progress_waits_without_marking(tmp_path):
         assert pipe.downloader.downloads == 0
 
 
-def test_regular_upload_is_ignored_when_only_lives(tmp_path):
+def test_regular_upload_is_always_ignored(tmp_path):
     pipe, events, publisher = build(tmp_path, transcript=good_transcript(), live_status="not_live")
     pipe.run_once()
     assert not publisher.published
     assert any(isinstance(e, VideoSkipped) and "live" in e.reason for e in events)
-
-
-def test_regular_upload_allowed_when_only_lives_disabled(tmp_path):
-    pipe, _, publisher = build(
-        tmp_path, transcript=good_transcript(), live_status="not_live", only_lives=False
-    )
-    pipe.run_once()
-    assert len(publisher.published) == 1
 
 
 def test_ended_live_without_captions_waits_before_whisper(tmp_path):

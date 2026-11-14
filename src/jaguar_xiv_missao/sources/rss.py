@@ -13,7 +13,15 @@ from ..models import SourceVideo
 
 logger = logging.getLogger(__name__)
 
-FEED_URL = "https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+FEED_URL = "https://www.youtube.com/feeds/videos.xml?playlist_id={playlist_id}"
+LIVES_PREFIX = "UULV"  # playlist automática com as lives de um canal (UC<x> -> UULV<x>)
+
+
+def live_playlist_id(value: str) -> str:
+    """Aceita ID de playlist de lives (UULV...) ou ID de canal (UC...)."""
+    value = value.strip()
+    return LIVES_PREFIX + value[2:] if value.startswith("UC") else value
+
 
 
 def _to_dt(value: struct_time | None) -> datetime | None:
@@ -44,26 +52,26 @@ def parse_feed(content: str | bytes, channel_id: str = "") -> list[SourceVideo]:
 
 
 class RssVideoSource:
-    def __init__(self, channel_ids: list[str], max_age_hours: int) -> None:
-        self._channel_ids = channel_ids
+    def __init__(self, playlist_ids: list[str], max_age_hours: int) -> None:
+        self._playlist_ids = [live_playlist_id(p) for p in playlist_ids]
         self._max_age = timedelta(hours=max_age_hours)
 
     def latest(self) -> Iterable[SourceVideo]:
         cutoff = datetime.now(UTC) - self._max_age
-        for channel_id in self._channel_ids:
+        for playlist_id in self._playlist_ids:
             try:
-                videos = parse_feed(_fetch(channel_id), channel_id)
+                videos = parse_feed(_fetch(playlist_id))
             except Exception:
-                logger.exception("Falha ao ler o feed do canal %s", channel_id)
+                logger.exception("Falha ao ler o feed da playlist %s", playlist_id)
                 continue
             for video in videos:
                 if video.published_at is None or video.published_at >= cutoff:
                     yield video
 
 
-def _fetch(channel_id: str) -> bytes:
+def _fetch(playlist_id: str) -> bytes:
     import httpx
 
-    response = httpx.get(FEED_URL.format(channel_id=channel_id), timeout=30, follow_redirects=True)
+    response = httpx.get(FEED_URL.format(playlist_id=playlist_id), timeout=30, follow_redirects=True)
     response.raise_for_status()
     return response.content

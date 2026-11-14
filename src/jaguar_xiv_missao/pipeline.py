@@ -106,7 +106,8 @@ class Pipeline:
     # ---------- etapas ----------
     def _reject_reason(self, video: SourceVideo, force: bool = False) -> str | None:
         s = self.settings
-        if s.only_lives and not force and not video.live_ended:
+        # Regra fixa do projeto: só lives encerradas (uploads comuns nunca entram).
+        if not force and not video.live_ended:
             return "não é uma live"
         duration = video.duration_seconds or 0
         if duration < s.source_min_duration_seconds:
