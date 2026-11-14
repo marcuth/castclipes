@@ -1,0 +1,10 @@
+IDEIA.md
+PADROES_CANAL.md
+.venv/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+data/
+secrets/

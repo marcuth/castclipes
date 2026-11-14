@@ -1,0 +1,172 @@
+"""Configuração central. Tudo vem do `.env` (ver `.env.example`)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Annotated, Literal
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+Position = Literal[
+    "top-left", "top-right", "bottom-left", "bottom-right", "center", "top-center", "bottom-center"
+]
+
+
+def _split_csv(value: object) -> object:
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return value
+
+
+CsvList = Annotated[list[str], NoDecode]
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # ---------- Fontes (RSS) ----------
+    source_channel_ids: CsvList = Field(default_factory=list)
+    """IDs de canal (UC...) cujos feeds RSS serão monitorados."""
+    poll_interval_seconds: int = 900
+    source_max_age_hours: int = 48
+    """Ignora vídeos do feed mais antigos que isso."""
+    source_min_duration_seconds: int = 600
+    """Ignora vídeos-fonte mais curtos (não há o que cortar)."""
+    source_max_duration_seconds: int = 4 * 3600
+    skip_live_streams: bool = True
+
+    # ---------- Relevância ----------
+    target_keywords: CsvList = Field(
+        default_factory=lambda: [
+            "renan santos", "arthur do val", "mamaefalei", "kim kataguiri", "mbl",
+            "movimento brasil livre", "partido missão", "partido missao", "missão",
+        ]
+    )
+    """Termos que tornam um vídeo candidato. Comparação sem acento/caixa."""
+    min_keyword_mentions: int = 3
+    """Menções mínimas na transcrição para seguir para a IA."""
+    triage_min_score: float = 0.7
+    """Nota mínima (0-1) para gastar download+Whisper em vídeo sem legenda."""
+
+    # ---------- Seleção dos cortes ----------
+    # Padrão do canal analisado: cortes de 11 a 41 min (mediana 22), um assunto por corte.
+    clip_min_seconds: int = 600
+    clip_max_seconds: int = 2400
+    clip_target_seconds: int = 1320
+    clip_min_score: float = 0.6
+    max_clips_per_video: int = 3
+    clip_edge_padding_seconds: float = 0.5
+    """Folga antes/depois do corte, ajustada às fronteiras de frase."""
+    selection_window_seconds: int = 3600
+    selection_window_overlap_seconds: int = 300
+    """Transcrições longas são analisadas em janelas para caber no contexto da IA."""
+
+    # ---------- Corte de silêncio ----------
+    silence_cut_enabled: bool = True
+    silence_threshold_db: float = -35.0
+    silence_min_duration_seconds: float = 0.8
+    """Só pausas maiores que isso são encurtadas (o canal-alvo preserva o ritmo natural)."""
+    silence_keep_padding_seconds: float = 0.25
+    """Quanto da pausa é mantido em cada ponta."""
+
+    # ---------- Overlays ----------
+    watermark_path: Path | None = None
+    watermark_position: Position = "top-right"
+    watermark_width_pct: float = 0.14
+    watermark_opacity: float = 0.85
+    watermark_margin_px: int = 24
+    cta_path: Path | None = None
+    """Segundo overlay (ex.: QR code de CTA)."""
+    cta_position: Position = "bottom-right"
+    cta_width_pct: float = 0.07
+    cta_opacity: float = 1.0
+    cta_margin_px: int = 24
+    outro_path: Path | None = None
+    """Vídeo opcional anexado ao fim de cada corte."""
+
+    # ---------- Render ----------
+    render_fps: int = 30
+    render_preset: str = "medium"
+    render_crf: int = 21
+    render_threads: int = 4
+    max_source_height: int = 1080
+
+    # ---------- IA (qualquer API compatível com OpenAI) ----------
+    ai_provider: Literal["openai_compatible"] = "openai_compatible"
+    ai_base_url: str = "https://api.openai.com/v1"
+    ai_api_key: str = ""
+    ai_model: str = "gpt-4.1-mini"
+    ai_temperature: float = 0.3
+    ai_timeout_seconds: float = 120.0
+
+    # ---------- Transcrição ----------
+    transcript_languages: CsvList = Field(default_factory=lambda: ["pt", "pt-BR"])
+    whisper_model: str = "small"
+    whisper_device: str = "auto"
+    whisper_compute_type: str = "int8"
+
+    # ---------- Metadados de publicação ----------
+    title_max_chars: int = 100
+    fixed_tags: CsvList = Field(
+        default_factory=lambda: [
+            "cortes do mbl", "renan santos", "kim kataguiri", "arthur do val",
+            "mamaefalei", "mbl", "movimento brasil livre", "partido missao",
+        ]
+    )
+    fixed_hashtags: CsvList = Field(
+        default_factory=lambda: [
+            "cortesmbl", "partidomissao", "mbl", "renansantos", "mamaefalei", "kimkataguiri"
+        ]
+    )
+    channel_name: str = ""
+    description_header: str = ""
+    description_footer: str = ""
+    social_links: CsvList = Field(default_factory=list)
+    """Linhas livres `Rótulo: url`, separadas por vírgula."""
+    watch_more_label: str = ""
+    watch_more_url: str = ""
+
+    # ---------- Publicação ----------
+    publish_mode: Literal["youtube", "dry_run"] = "dry_run"
+    youtube_privacy_status: Literal["private", "unlisted", "public"] = "private"
+    youtube_category_id: str = "25"
+    """25 = Notícias e política."""
+    youtube_client_secrets_file: Path = Path("secrets/client_secret.json")
+    youtube_token_file: Path = Path("secrets/youtube_token.json")
+    max_publish_per_day: int = 5
+    """A cota padrão da API (10.000/dia, ~1.600 por upload) comporta cerca de 6 envios/dia."""
+
+    # ---------- Thumbnails ----------
+    thumbnail_provider: Literal["none"] = "none"
+
+    # ---------- Armazenamento / notificações ----------
+    data_dir: Path = Path("data")
+    notify_webhook_url: str = ""
+    log_level: str = "INFO"
+
+    @field_validator(
+        "source_channel_ids", "target_keywords", "transcript_languages", "fixed_tags",
+        "fixed_hashtags", "social_links",
+        mode="before",
+    )
+    @classmethod
+    def _csv(cls, value: object) -> object:
+        return _split_csv(value)
+
+    @field_validator("watermark_path", "cta_path", "outro_path", mode="before")
+    @classmethod
+    def _empty_path_is_none(cls, value: object) -> object:
+        return None if value in ("", None) else value
+
+    @property
+    def work_dir(self) -> Path:
+        return self.data_dir / "work"
+
+    @property
+    def output_dir(self) -> Path:
+        return self.data_dir / "clips"
+
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "state.sqlite3"
