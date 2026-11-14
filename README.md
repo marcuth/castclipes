@@ -1,4 +1,10 @@
+<p align="center">
+  <img src="docs/images/jaugar-circle.png" alt="Jaguar XIV" width="200">
+</p>
+
 # Jaguar XIV - Clipador da Missão/MBL
+
+📺 Canal no YouTube: [@jaguarxiv](https://www.youtube.com/@jaguarxiv)
 
 Funcionário virtual que monitora canais do YouTube (RSS), acompanha **lives** (RSS), espera cada uma terminar, encontra trechos em que Renan Santos, Arthur do Val, membros do MBL ou o Partido Missão são protagonistas ou alvo, gera cortes e os publica. O formato segue o padrão: cortes longos (10 a 40 min), um assunto por corte, título em caixa alta e descrição com crédito à fonte.
 
@@ -76,7 +82,7 @@ Veja `.env.example` (todas comentadas). Destaques:
 - **Cota do YouTube**: o upload custa ~1.600 unidades; a cota padrão (10.000/dia) comporta ~6 envios/dia. Projetos de API novos e não auditados publicam como privado até passarem pela auditoria do Google.
 - **Direitos autorais**: os cortes reaproveitam conteúdo de terceiros. A descrição sempre credita e linka o vídeo original, mas confirme a política de cada canal-fonte.
 - **moviepy** é lento em vídeos longos (um corte de 20 min em 1080p leva vários minutos). Ajuste `RENDER_PRESET`.
-- **Thumbnails**: `NullThumbnailGenerator` por enquanto (provedor e prompt em aberto).
+- **Thumbnails**: desligadas por padrão (`THUMBNAIL_PROVIDER=none`). Com `template`, o pipeline amostra frames do corte, detecta rostos (MediaPipe/BlazeFace, do Google), escolhe o frame com rosto bem enquadrado e fundo limpo, dá zoom no rosto e escreve o gancho em Anton via template [xpict.py](https://pypi.org/project/xpict.py/). Sem IA generativa; os limiares de nota (`thumbnails/scoring.py`) ainda não foram calibrados com frames reais das lives.
 - O AI SDK para Python (`ai` 0.9) está em beta público; a API pode mudar entre versões.
 
 ## Licença
