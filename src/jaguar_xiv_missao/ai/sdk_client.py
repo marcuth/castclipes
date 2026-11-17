@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging
 import time
 from collections.abc import Callable
@@ -36,6 +37,8 @@ class AiSdkClient:
         self._delay = retry_delay_seconds
         self._max_delay = retry_max_delay_seconds
         self._sleep = sleep
+        # O pipeline não guarda o cliente; fecha o loop limpo ao sair do processo.
+        atexit.register(self.close)
 
     def generate[T: pydantic.BaseModel](self, system: str, user: str, output_type: type[T]) -> T:
         """Chama o modelo; com `max_retries` > 0, repete falhas (HTTP, resposta vazia/inválida)
@@ -68,5 +71,11 @@ class AiSdkClient:
             return stream.output
 
     def close(self) -> None:
-        self._loop.run_until_complete(self._model.provider.aclose())
-        self._loop.close()
+        """Fecha provedor e geradores assíncronos e o loop. Idempotente."""
+        if self._loop.is_closed():
+            return
+        try:
+            self._loop.run_until_complete(self._model.provider.aclose())
+            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+        finally:
+            self._loop.close()
