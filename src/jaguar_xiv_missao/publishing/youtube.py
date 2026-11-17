@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import UTC, datetime
 from pathlib import Path
+
+from httplib2 import HttpLib2Error
 
 from ..config import Settings
 from ..models import PublishResult, RenderedClip
@@ -16,6 +19,10 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube",  # necessário para definir a thumbnail
 ]
+
+
+UPLOAD_RETRIES = 8  # tentativas internas do googleapiclient por chunk
+UPLOAD_RESUME_ATTEMPTS = 6  # retomadas externas seguidas sem progresso
 
 
 def load_credentials(client_secrets: Path, token_file: Path):
@@ -82,8 +89,24 @@ class YouTubePublisher:
             part="snippet,status", body=body, media_body=media
         )
         response = None
+        failures = 0
         while response is None:
-            status, response = request.next_chunk()
+            try:
+                # num_retries cobre 5xx e quedas de conexão com backoff exponencial
+                status, response = request.next_chunk(num_retries=UPLOAD_RETRIES)
+            except (OSError, HttpLib2Error) as exc:
+                # Upload resumível: chamar next_chunk de novo retoma de onde parou.
+                failures += 1
+                if failures > UPLOAD_RESUME_ATTEMPTS:
+                    raise
+                wait = min(2**failures, 60)
+                logger.warning(
+                    "Upload interrompido (%s); retomando em %ds (%d/%d)",
+                    exc, wait, failures, UPLOAD_RESUME_ATTEMPTS,
+                )
+                time.sleep(wait)
+                continue
+            failures = 0
             if status:
                 logger.info("Upload %.0f%%", status.progress() * 100)
         video_id = response["id"]
