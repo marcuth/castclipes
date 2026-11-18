@@ -1,4 +1,4 @@
-"""Formatação no padrão do canal-alvo: títulos em CAIXA ALTA, preposições em minúsculo."""
+"""Formatação de títulos, tags e hashtags."""
 
 from __future__ import annotations
 
@@ -12,14 +12,19 @@ SMALL_WORDS = {
 YOUTUBE_TAGS_MAX_CHARS = 500
 
 
-def format_title(raw: str, max_chars: int = 100) -> str:
-    """`arthur do val reage a vídeo bizarro` -> `ARTHUR do VAL REAGE a VÍDEO BIZARRO`."""
-    words = re.sub(r"\s+", " ", raw).strip().strip('"“”').split(" ")
-    out = []
-    for i, word in enumerate(words):
-        bare = re.sub(r"\W", "", word).lower()
-        out.append(word.lower() if i > 0 and bare in SMALL_WORDS else word.upper())
-    title = " ".join(out)
+def format_title(raw: str, max_chars: int = 100, style: str = "natural") -> str:
+    """`upper`: `fulano reage a vídeo` -> `FULANO REAGE a VÍDEO` (preposições em minúsculo).
+    `natural`: mantém a frase da IA, só garante a 1ª letra maiúscula."""
+    clean = re.sub(r"\s+", " ", raw).strip().strip('"“”')
+    if style == "upper":
+        words = clean.split(" ")
+        out = []
+        for i, word in enumerate(words):
+            bare = re.sub(r"\W", "", word).lower()
+            out.append(word.lower() if i > 0 and bare in SMALL_WORDS else word.upper())
+        title = " ".join(out)
+    else:
+        title = clean[:1].upper() + clean[1:]
     if len(title) > max_chars:
         title = title[: max_chars - 1].rsplit(" ", 1)[0].rstrip(" ,:;-") + "…"
     return title

@@ -1,6 +1,6 @@
-from jaguar_xiv_missao.config import Settings
-from jaguar_xiv_missao.editing.overlay import compute_position
-from jaguar_xiv_missao.sources.rss import live_playlist_id, parse_feed
+from castclipes.config import Settings
+from castclipes.editing.overlay import compute_position
+from castclipes.sources.rss import live_playlist_id, parse_feed
 
 FEED = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015"
@@ -23,11 +23,13 @@ def test_positions():
 def test_settings_csv_and_empty_paths(monkeypatch):
     monkeypatch.setenv("SOURCE_LIVE_PLAYLIST_IDS", "UULV1, UC2")
     monkeypatch.setenv("WATERMARK_PATH", "")
-    monkeypatch.setenv("CLIP_MIN_SECONDS", "300")
+    monkeypatch.setenv("LONG_MIN_SECONDS", "300")
+    monkeypatch.setenv("CLIP_FORMATS", "Short")
     s = Settings(_env_file=None)
     assert s.source_live_playlist_ids == ["UULV1", "UC2"]
     assert s.watermark_path is None
-    assert s.clip_min_seconds == 300 and s.clip_max_seconds == 2400
+    assert s.long_min_seconds == 300 and s.long_max_seconds == 2400
+    assert s.clip_formats == ["short"]
 
 
 def test_parse_feed():
@@ -42,7 +44,7 @@ def test_live_playlist_id_accepts_channel_or_playlist():
 
 
 def test_overlay_size_stretch_fills_video_and_width_keeps_aspect():
-    from jaguar_xiv_missao.editing.overlay import overlay_size
+    from castclipes.editing.overlay import overlay_size
 
     assert overlay_size("stretch", (1280, 720), (1920, 1080), 0.14) == (1280, 720)
     assert overlay_size("stretch", (1280, 720), (500, 500), 0.14) == (1280, 720)
@@ -50,8 +52,8 @@ def test_overlay_size_stretch_fills_video_and_width_keeps_aspect():
 
 
 def test_choose_insert_point_prefers_pause_near_target():
-    from jaguar_xiv_missao.editing.insertion import choose_insert_point
-    from jaguar_xiv_missao.models import Transcript, TranscriptSegment
+    from castclipes.editing.insertion import choose_insert_point
+    from castclipes.models import Transcript, TranscriptSegment
 
     segs = [TranscriptSegment(i * 10.0, i * 10.0 + 9.5, f"s{i}") for i in range(20)]
     segs[9] = TranscriptSegment(90.0, 97.0, "pausa longa depois")  # fim 97, próxima começa em 100
@@ -61,9 +63,34 @@ def test_choose_insert_point_prefers_pause_near_target():
 
 
 def test_to_relative_skips_removed_silence():
-    from jaguar_xiv_missao.editing.insertion import to_relative
+    from castclipes.editing.insertion import to_relative
 
     keep = [(100.0, 110.0), (115.0, 130.0)]
     assert to_relative(keep, 105.0) == 5.0
     assert to_relative(keep, 112.0) == 10.0  # dentro do silêncio removido
     assert to_relative(keep, 120.0) == 15.0
+
+
+def test_clip_formats_rejects_unknown():
+    import pytest
+
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, clip_formats=["long", "reels"])
+
+
+def test_overlays_are_chosen_per_format(tmp_path):
+    from castclipes.editing.overlay import create_overlays
+    from castclipes.models import ClipFormat
+
+    s = Settings(
+        _env_file=None, long_frame_path=tmp_path / "l.png", short_frame_path=tmp_path / "s.png",
+        watermark_path=tmp_path / "w.png",
+    )
+    long_layers = create_overlays(s, ClipFormat.LONG)
+    short_layers = create_overlays(s, ClipFormat.SHORT)
+    assert [o.path.name for o in long_layers] == ["l.png", "w.png"]
+    assert [o.path.name for o in short_layers] == ["s.png", "w.png"]
+    # a moldura sempre estica ao vídeo; a marca d'água respeita a largura configurada
+    assert long_layers[0].placement((1920, 1080), (10, 10)) == ((1920, 1080), (0, 0))
+    assert short_layers[0].placement((1080, 1920), (10, 10)) == ((1080, 1920), (0, 0))
+    assert create_overlays(Settings(_env_file=None), ClipFormat.SHORT) == []

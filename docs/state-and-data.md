@@ -40,7 +40,7 @@ Cada corte feito, para não repetir e para a cota e a fila.
 | `published_at` | Quando o envio foi feito (UTC) |
 | `scheduled_for` | Horário agendado (UTC); nulo se sem fila ou em `dry_run` |
 
-Bancos criados antes da fila ganham a coluna `scheduled_for` automaticamente na abertura.
+A chave de um corte é `(source_id, format, start, end)`: um short e um corte longo do mesmo vídeo nunca colidem.
 
 ## Operações do `StateStore`
 
@@ -49,11 +49,11 @@ Bancos criados antes da fila ganham a coluna `scheduled_for` automaticamente na 
 | `seen(id)` | Já foi concluído/descartado? Falso para `failed` e `waiting` |
 | `mark(id, status, reason)` | Grava o estado |
 | `mark_waiting` / `waiting_since` | Controla a espera pela legenda sem reiniciar o relógio |
-| `clip_done(id, start, end)` | O corte já foi feito? |
+| `clip_done(id, formato, start, end)` | O corte já foi feito? |
 | `record_clip(...)` | Registra o corte (e o horário agendado) |
 | `published_today()` | Envios feitos hoje (UTC), para `MAX_PUBLISH_PER_DAY` |
 | `scheduled_times()` | Horários ocupados na fila (de ontem em diante) |
 
 ## Reiniciar do zero
 
-Para reprocessar tudo, pare o processo e apague `data/state.sqlite3`. Para reprocessar um vídeo só, use `python -m jaguar_xiv_missao process <url-ou-id>`.
+Para reprocessar tudo, pare o processo e apague `data/state.sqlite3`. Para reprocessar um vídeo só, use `python -m castclipes process <url-ou-id>`.

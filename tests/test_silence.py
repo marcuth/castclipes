@@ -1,4 +1,4 @@
-from jaguar_xiv_missao.editing.silence import Silence, parse_silencedetect, plan_keep_ranges
+from castclipes.editing.silence import Silence, parse_silencedetect, plan_keep_ranges
 
 STDERR = """
 [silencedetect @ 0x1] silence_start: 10.5

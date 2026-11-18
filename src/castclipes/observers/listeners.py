@@ -16,7 +16,7 @@ from ..events import (
     VideoWaiting,
 )
 
-logger = logging.getLogger("jaguar")
+logger = logging.getLogger("castclipes")
 
 
 class LoggingObserver:
@@ -33,11 +33,12 @@ class LoggingObserver:
             case ClipsSelected(video, candidates):
                 for c in candidates:
                     logger.info(
-                        "Corte %s [%.0f-%.0f s, %.0f min, nota %.2f]: %s",
-                        video.id, c.start, c.end, c.duration / 60, c.score, c.topic,
+                        "Corte %s %s [%.0f-%.0f s, %.1f min, nota %.2f]: %s",
+                        c.format.value, video.id, c.start, c.end, c.duration / 60, c.score, c.topic,
                     )
             case ClipRendered(clip):
-                logger.info("Renderizado: %s (%.1f min)", clip.path, clip.duration_seconds / 60)
+                logger.info("Renderizado (%s): %s (%.1f min)", clip.candidate.format.value,
+                            clip.path, clip.duration_seconds / 60)
             case ClipPublished(clip, result):
                 logger.info("Publicado: %s", result.url or "(dry-run)")
             case PipelineError(video, error):

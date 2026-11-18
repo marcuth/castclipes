@@ -2,7 +2,7 @@
 
 Tudo vem do `.env` (copie de `.env.example`, que traz todas as variáveis comentadas). A leitura é feita por `config.py::Settings` (pydantic-settings): nomes **não** diferenciam maiúsculas, variáveis desconhecidas são ignoradas e listas são separadas por vírgula.
 
-Valores vazios em caminhos (`WATERMARK_PATH=`) significam "desligado".
+Valores vazios em caminhos (`LONG_FRAME_PATH=`) significam "desligado".
 
 ## Fontes
 
@@ -20,24 +20,27 @@ Valores vazios em caminhos (`WATERMARK_PATH=`) significam "desligado".
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `TARGET_KEYWORDS` | nomes do MBL/Missão | Termos que tornam um vídeo candidato (sem acento nem caixa) |
-| `MIN_KEYWORD_MENTIONS` | 3 | Menções mínimas na transcrição |
 | `TRIAGE_MIN_SCORE` | 0,7 | Nota mínima da triagem para gastar Whisper |
 
-## Cortes
+## Formatos e cortes
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `CLIP_MIN_SECONDS` | 600 | Duração mínima |
-| `CLIP_MAX_SECONDS` | 2400 | Duração máxima |
-| `CLIP_TARGET_SECONDS` | 1320 | Duração ideal informada à IA |
-| `CLIP_MIN_SCORE` | 0,6 | Nota mínima (0 a 1) |
-| `MAX_CLIPS_PER_VIDEO` | 3 | Máximo de cortes por live |
-| `CLIP_EDGE_PADDING_SECONDS` | 0,5 | Folga em cada ponta |
+| `CLIP_FORMATS` | long,short | Formatos gerados: `long`, `short` ou os dois |
+| `CLIP_EDGE_PADDING_SECONDS` | 0,5 | Folga em cada ponta do corte longo |
 | `SELECTION_WINDOW_SECONDS` | 3600 | Tamanho da janela de análise |
 | `SELECTION_WINDOW_OVERLAP_SECONDS` | 300 | Sobreposição entre janelas |
+| `LONG_MIN_SECONDS` / `LONG_MAX_SECONDS` | 600 / 2400 | Duração do corte longo |
+| `LONG_TARGET_SECONDS` | 1320 | Duração ideal informada à IA |
+| `LONG_MIN_SCORE` | 0,6 | Nota mínima (0 a 1) |
+| `MAX_LONG_PER_VIDEO` | 3 | Máximo de cortes longos por live |
+| `SHORT_MIN_SECONDS` / `SHORT_MAX_SECONDS` | 20 / 85 | Duração do short |
+| `SHORT_TARGET_SECONDS` | 45 | Duração ideal informada à IA |
+| `SHORT_MIN_SCORE` | 0,7 | Nota mínima (0 a 1) |
+| `MAX_SHORTS_PER_VIDEO` | 8 | Máximo de shorts por live |
+| `SHORT_EDGE_PADDING_SECONDS` | 0,2 | Folga em cada ponta do short |
 
-## Silêncio
+## Silêncio (só corte longo)
 
 | Variável | Padrão | Descrição |
 |---|---|---|
@@ -46,20 +49,36 @@ Valores vazios em caminhos (`WATERMARK_PATH=`) significam "desligado".
 | `SILENCE_MIN_DURATION_SECONDS` | 0,8 | Só pausas maiores são encurtadas |
 | `SILENCE_KEEP_PADDING_SECONDS` | 0,25 | Parte da pausa mantida em cada ponta |
 
-## Overlays, CTA e outro
+## Molduras, marca d'água, CTA e outro
 
 | Variável | Padrão | Descrição |
 |---|---|---|
-| `WATERMARK_PATH` | vazio | PNG com transparência |
-| `WATERMARK_FIT` | width | `width` ou `stretch` (moldura em tela cheia) |
+| `LONG_FRAME_PATH` | vazio | Moldura PNG 1920x1080 sobre o corte longo (esticada ao vídeo) |
+| `SHORT_FRAME_PATH` | vazio | Moldura PNG 1080x1920 sobre o short (esticada ao vídeo) |
+| `WATERMARK_PATH` | vazio | PNG com transparência, por cima da moldura, nos dois formatos |
+| `WATERMARK_FIT` | width | `width` ou `stretch` (tela cheia) |
 | `WATERMARK_POSITION` | top-right | Posição (ignorada em `stretch`) |
 | `WATERMARK_WIDTH_PCT` | 0,14 | Largura relativa (ignorada em `stretch`) |
 | `WATERMARK_OPACITY` | 0,85 | Opacidade |
 | `WATERMARK_MARGIN_PX` | 24 | Margem (ignorada em `stretch`) |
-| `CTA_VIDEO_PATH` | vazio | Vídeo inserido no meio do corte |
+| `CTA_VIDEO_PATH` | vazio | Vídeo inserido no meio do corte longo |
 | `CTA_POSITION_PCT` | 0,5 | Ponto do corte (0 a 1) onde o CTA entra |
-| `CTA_MIN_CLIP_SECONDS` | 480 | Cortes mais curtos não recebem CTA |
-| `OUTRO_PATH` | vazio | Vídeo anexado ao fim |
+| `CTA_MIN_CLIP_SECONDS` | 480 | Cortes longos mais curtos não recebem CTA |
+| `OUTRO_PATH` | vazio | Vídeo anexado ao fim do corte longo |
+
+## Shorts: enquadramento e legendas
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `SHORT_WIDTH` / `SHORT_HEIGHT` | 1080 / 1920 | Resolução do short |
+| `SHORT_FRAMING_SAMPLE_FPS` | 5 | Quadros/s analisados para achar rostos |
+| `SHORT_SPLIT_SCREEN` | true | Permite dividir a tela com dois interlocutores |
+| `SHORT_SPLIT_CHANCE` | 0,5 | Probabilidade de usar o split quando há dois rostos |
+| `SHORT_CAPTIONS` | true | Queima legendas palavra a palavra |
+| `SHORT_CAPTIONS_WHISPER` | true | Tempo exato das palavras via Whisper (precisa de `.[whisper]`) |
+| `SHORT_CAPTION_HIGHLIGHT` | #FFD400 | Cor da palavra falada |
+| `SHORT_CAPTION_FONT_PATH` | vazio | Fonte da legenda (vazio = Anton embutida) |
+| `SHORT_CAPTION_MARGIN_V` | 520 | Distância da legenda até a base (px, em 1920) |
 
 ## Render
 
@@ -115,7 +134,7 @@ Veja [ai.md](ai.md).
 |---|---|---|
 | `PUBLISH_MODE` | dry_run | `dry_run` ou `youtube` |
 | `YOUTUBE_PRIVACY_STATUS` | private | `private`, `unlisted` ou `public` (ignorada com a fila ligada) |
-| `YOUTUBE_CATEGORY_ID` | 25 | Notícias e política |
+| `YOUTUBE_CATEGORY_ID` | 22 | Pessoas e blogs (24 = Entretenimento, 25 = Notícias) |
 | `YOUTUBE_CLIENT_SECRETS_FILE` | secrets/client_secret.json | Credencial OAuth |
 | `YOUTUBE_TOKEN_FILE` | secrets/youtube_token.json | Token salvo |
 | `MAX_PUBLISH_PER_DAY` | 5 | Limite de envios por dia |

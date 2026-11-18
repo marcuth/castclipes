@@ -1,6 +1,8 @@
-# Edição de vídeo
+# Edição do corte longo
 
-Código: `editing/` (`silence.py`, `insertion.py`, `overlay.py`, `ffmpeg_renderer.py`, `renderer.py`, `render_factory.py`).
+Este arquivo trata do corte **longo** (16:9). O short tem renderer próprio: veja [shorts.md](shorts.md).
+
+Código: `editing/` (`silence.py`, `insertion.py`, `overlay.py`, `ffmpeg_renderer.py`, `renderer.py`, `render_factory.py`; o short fica em `vertical_renderer.py`).
 
 ## Visão geral
 
@@ -16,7 +18,7 @@ trecho [start, end] do vídeo completo
 
 ## Corte de silêncio
 
-Objetivo: encurtar pausas longas sem destruir o ritmo natural da fala (o canal-alvo preserva o ritmo).
+Objetivo: encurtar pausas longas sem destruir o ritmo natural da fala (preserva o ritmo da conversa).
 
 1. `FfmpegSilenceDetector.detect` roda `silencedetect` no trecho (`SILENCE_THRESHOLD_DB`, padrão −35 dB) e lê as pausas da saída do ffmpeg.
 2. `plan_keep_ranges` considera só pausas com pelo menos `SILENCE_MIN_DURATION_SECONDS` (padrão 0,8 s). De cada pausa, mantém `SILENCE_KEEP_PADDING_SECONDS` (0,25 s) em cada ponta e remove o miolo.
@@ -98,4 +100,4 @@ Desempenho observado: ~12 s com ffmpeg contra ~228 s com moviepy para o mesmo co
 
 ## Variáveis relacionadas
 
-`SILENCE_*`, `WATERMARK_*`, `CTA_VIDEO_PATH`, `CTA_POSITION_PCT`, `CTA_MIN_CLIP_SECONDS`, `OUTRO_PATH`, `RENDER_*`, `MAX_SOURCE_HEIGHT`.
+`SILENCE_*`, `LONG_FRAME_PATH`, `WATERMARK_*`, `CTA_VIDEO_PATH`, `CTA_POSITION_PCT`, `CTA_MIN_CLIP_SECONDS`, `OUTRO_PATH`, `RENDER_*`, `MAX_SOURCE_HEIGHT`.

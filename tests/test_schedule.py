@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, time, timedelta
 
-from jaguar_xiv_missao.config import Settings
-from jaguar_xiv_missao.publishing.schedule import day_times, next_slot, slots_for_day
+from castclipes.config import Settings
+from castclipes.publishing.schedule import day_times, next_slot, slots_for_day
 
 
 def cfg(**kw):

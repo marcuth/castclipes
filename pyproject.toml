@@ -1,7 +1,7 @@
 [project]
-name = "jaguar-xiv-missao"
+name = "castclipes"
 version = "0.1.0"
-description = "Funcionário virtual que gera e publica cortes de vídeos do YouTube em que MBL/Missão são citados."
+description = "Funcionário virtual que acompanha lives de podcast no YouTube e publica cortes longos (16:9) e shorts (9:16)."
 authors = [
     {name = "Marcuth",email = "me@marcuth.dev"}
 ]
@@ -31,10 +31,10 @@ whisper = ["faster-whisper>=1.0"]
 dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [project.scripts]
-jaguar = "jaguar_xiv_missao.cli:main"
+castclipes = "castclipes.cli:main"
 
 [tool.poetry]
-packages = [{include = "jaguar_xiv_missao", from = "src"}]
+packages = [{include = "castclipes", from = "src"}]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

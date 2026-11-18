@@ -3,21 +3,23 @@
 from dataclasses import replace
 from pathlib import Path
 
-from jaguar_xiv_missao.analysis.triage import TriageResult
-from jaguar_xiv_missao.config import Settings
-from jaguar_xiv_missao.editing.silence import NullSilenceDetector
-from jaguar_xiv_missao.events import ClipPublished, EventBus, VideoSkipped, VideoWaiting
-from jaguar_xiv_missao.models import (
+from castclipes.analysis.triage import TriageResult
+from castclipes.config import Settings
+from castclipes.editing.silence import NullSilenceDetector
+from castclipes.events import ClipPublished, EventBus, VideoSkipped, VideoWaiting
+from castclipes.models import (
     ClipCandidate,
+    ClipFormat,
     ClipMetadata,
     PublishResult,
     SourceVideo,
     Transcript,
     TranscriptSegment,
+    Word,
 )
-from jaguar_xiv_missao.pipeline import Pipeline
-from jaguar_xiv_missao.storage.state import StateStore
-from jaguar_xiv_missao.thumbnails.base import NullThumbnailGenerator
+from castclipes.pipeline import Pipeline
+from castclipes.storage.state import StateStore
+from castclipes.thumbnails.base import NullThumbnailGenerator
 
 
 class FakeSource:
@@ -52,11 +54,24 @@ class FakeTriage:
 
 
 class FakeSelector:
-    def select(self, v, t): return [ClipCandidate(10, 700, "assunto", 0.9)]
+    def __init__(self, fmt, start, end): self.fmt, self.start, self.end = fmt, start, end
+    def select(self, v, t): return [ClipCandidate(self.start, self.end, "assunto", 0.9, self.fmt)]
 
 
 class FakeRenderer:
     def render(self, src, keep, out, insert_at=None): return 650.0
+
+
+class FakeShortRenderer:
+    def __init__(self): self.calls = []
+    def render(self, src, start, end, out, words):
+        self.calls.append((start, end, list(words)))
+        return end - start
+
+
+class FakeAligner:
+    def align(self, source, candidate, transcript):
+        return [Word(0.0, 0.5, "oi")]
 
 
 class FakeMetadata:
@@ -74,16 +89,22 @@ class FakePublisher:
 def build(
     tmp_path, *, transcript, duration=1800, triage_ok=True, fallback=None, live_status="was_live", **settings
 ):
+    settings.setdefault("clip_formats", ["long"])
     s = Settings(_env_file=None, data_dir=tmp_path, **settings)
     bus, events = EventBus(), []
     bus.subscribe_all(events.append)
-    video = SourceVideo(id="v1", title="Renan Santos")
+    video = SourceVideo(id="v1", title="Podcast ao vivo")
     publisher = FakePublisher()
     pipe = Pipeline(
         settings=s, source=FakeSource([video]), downloader=FakeDownloader(duration, live_status),
         primary_transcriber=FakeTranscriber(transcript),
         fallback_transcriber=FakeTranscriber(fallback), triage=FakeTriage(triage_ok),
-        selector=FakeSelector(), silence=NullSilenceDetector(), renderer=FakeRenderer(),
+        selectors={
+            ClipFormat.LONG: FakeSelector(ClipFormat.LONG, 10, 700),
+            ClipFormat.SHORT: FakeSelector(ClipFormat.SHORT, 100, 140),
+        },
+        silence=NullSilenceDetector(), renderer=FakeRenderer(),
+        short_renderer=FakeShortRenderer(), aligner=FakeAligner(),
         metadata=FakeMetadata(), thumbnails=NullThumbnailGenerator(), publisher=publisher,
         store=StateStore(tmp_path / "s.db"), bus=bus,
     )
@@ -91,7 +112,7 @@ def build(
 
 
 def good_transcript():
-    text = "Renan Santos fala do MBL e do Partido Missão. " * 3
+    text = "Conversa de podcast sobre empreendedorismo. " * 3
     return Transcript([TranscriptSegment(0, 900, text)], "youtube")
 
 
@@ -169,3 +190,37 @@ def test_manual_process_forces_non_live(tmp_path):
     pipe, _, publisher = build(tmp_path, transcript=good_transcript(), live_status="not_live")
     pipe.process(SourceVideo(id="v1", title="t"), force=True)
     assert len(publisher.published) == 1
+
+
+def test_both_formats_render_and_publish_each_once(tmp_path):
+    pipe, _, publisher = build(
+        tmp_path, transcript=good_transcript(), clip_formats=["long", "short"]
+    )
+    pipe.run_once()
+    pipe.run_once()
+    formats = [c.candidate.format for c in publisher.published]
+    assert formats == [ClipFormat.LONG, ClipFormat.SHORT]
+    assert pipe.downloader.downloads == 1  # vídeo completo baixado uma vez para os dois formatos
+    # o short recebe as palavras alinhadas; fora do corte de silêncio
+    assert pipe.short_renderer.calls == [(100, 140, [Word(0.0, 0.5, "oi")])]
+    assert publisher.published[1].duration_seconds == 40
+
+
+def test_only_configured_formats_are_generated(tmp_path):
+    pipe, _, publisher = build(tmp_path, transcript=good_transcript(), clip_formats=["short"])
+    pipe.run_once()
+    assert [c.candidate.format for c in publisher.published] == [ClipFormat.SHORT]
+
+
+def test_manual_process_can_override_formats(tmp_path):
+    pipe, _, publisher = build(tmp_path, transcript=good_transcript(), clip_formats=["long"])
+    pipe.process(SourceVideo(id="v1", title="t"), force=True, formats=[ClipFormat.SHORT])
+    assert [c.candidate.format for c in publisher.published] == [ClipFormat.SHORT]
+
+
+def test_short_without_captions_skips_alignment(tmp_path):
+    pipe, _, publisher = build(
+        tmp_path, transcript=good_transcript(), clip_formats=["short"], short_captions=False
+    )
+    pipe.run_once()
+    assert pipe.short_renderer.calls == [(100, 140, [])] and len(publisher.published) == 1

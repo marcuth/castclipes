@@ -8,14 +8,11 @@ from enum import StrEnum
 from pathlib import Path
 
 
-class ClipPattern(StrEnum):
-    """Padrões de corte observados no canal-alvo (ver PADROES_CANAL.md)."""
+class ClipFormat(StrEnum):
+    """Formato de saída de um corte."""
 
-    REACTION = "reaction"  # "X REAGE a Y"
-    RESPONSE = "response"  # "X RESPONDE Y"
-    REVELATION = "revelation"  # "X FALA A VERDADE / REVELA BASTIDORES"
-    DEBATE = "debate"
-    OTHER = "other"
+    LONG = "long"  # 16:9, um assunto do começo ao fim (minutos)
+    SHORT = "short"  # 9:16, um gancho de poucos segundos, com legenda palavra a palavra
 
 
 @dataclass(frozen=True)
@@ -45,10 +42,21 @@ class SourceVideo:
 
 
 @dataclass(frozen=True)
+class Word:
+    """Palavra com tempo (usada nas legendas dos shorts)."""
+
+    start: float
+    end: float
+    text: str
+
+
+@dataclass(frozen=True)
 class TranscriptSegment:
     start: float
     end: float
     text: str
+    words: tuple[Word, ...] = ()
+    """Vazio quando a fonte não traz tempo por palavra (legenda do YouTube)."""
 
 
 @dataclass
@@ -90,10 +98,10 @@ class ClipCandidate:
     end: float
     topic: str
     score: float
-    pattern: ClipPattern = ClipPattern.OTHER
+    format: ClipFormat = ClipFormat.LONG
+    hook: str = ""
+    """Frase de abertura do corte (primeiros segundos); base do título dos shorts."""
     speakers: tuple[str, ...] = ()
-    target: str | None = None
-    """Terceiro visado (ex.: 'Nikolas Ferreira'); aparece no título."""
     summary: str = ""
 
     @property

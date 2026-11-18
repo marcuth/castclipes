@@ -7,7 +7,7 @@ Código: `sources/rss.py`, `sources/base.py`, `downloader.py::enrich`.
 Cada canal do YouTube tem uma playlist automática só com as lives, cujo ID é o ID do canal (`UC…`) com o prefixo trocado por `UULV`. O projeto monitora essas playlists, definidas em `SOURCE_LIVE_PLAYLIST_IDS` (vários IDs separados por vírgula).
 
 - `live_playlist_id()` aceita os dois formatos: um ID `UC…` é convertido sozinho.
-- Para descobrir o ID: `python -m jaguar_xiv_missao resolve-channel @TVdoMBL`.
+- Para descobrir o ID: `python -m castclipes resolve-channel @canal`.
 
 ## Leitura da lista
 

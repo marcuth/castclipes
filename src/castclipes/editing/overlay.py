@@ -1,4 +1,4 @@
-"""Overlay opcional (marca d'água / moldura em PNG)."""
+"""Overlays em PNG: moldura (por formato) e marca d'água."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ..config import Settings
+from ..models import ClipFormat
 
 
 def compute_position(
@@ -74,9 +75,13 @@ class ImageOverlay:
         return clip.with_duration(base.duration).with_opacity(self._opacity).with_position(pos)
 
 
-def create_overlays(settings: Settings) -> list[ImageOverlay]:
-    """Simple Factory: monta os overlays habilitados no .env, na ordem de empilhamento."""
+def create_overlays(settings: Settings, fmt: ClipFormat) -> list[ImageOverlay]:
+    """Simple Factory: moldura do formato e marca d'água, na ordem de empilhamento (a moldura
+    fica embaixo; a marca d'água por cima)."""
     overlays: list[ImageOverlay] = []
+    frame = settings.long_frame_path if fmt is ClipFormat.LONG else settings.short_frame_path
+    if frame:
+        overlays.append(ImageOverlay(frame, "center", 1.0, 1.0, 0, "stretch"))
     if settings.watermark_path:
         overlays.append(
             ImageOverlay(

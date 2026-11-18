@@ -14,12 +14,16 @@ def _video_id(value: str) -> str:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="jaguar", description="Funcionário virtual de cortes")
+    parser = argparse.ArgumentParser(prog="castclipes", description="CastClipes: cortes e shorts de podcast")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("run", help="verifica os feeds uma vez e processa os vídeos novos")
     sub.add_parser("watch", help="repete `run` a cada POLL_INTERVAL_SECONDS")
     p_video = sub.add_parser("process", help="processa um vídeo específico (URL ou ID)")
     p_video.add_argument("video")
+    p_video.add_argument(
+        "--format", choices=["long", "short", "both"], default=None,
+        help="formatos a gerar (padrão: CLIP_FORMATS do .env)",
+    )
     p_chan = sub.add_parser("resolve-channel", help="descobre o ID da playlist de lives de um @handle")
     p_chan.add_argument("handle")
     sub.add_parser("auth-youtube", help="faz o login OAuth e salva o token")
@@ -45,7 +49,7 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     from .container import build_pipeline
-    from .models import SourceVideo
+    from .models import ClipFormat, SourceVideo
 
     pipeline = build_pipeline(settings)
     try:
@@ -54,7 +58,10 @@ def main(argv: list[str] | None = None) -> None:
         elif args.command == "process":
             vid = _video_id(args.video)
             pipeline.store.mark(vid, "failed", "reprocessamento manual")  # libera para reprocessar
-            pipeline.process(SourceVideo(id=vid, title=""), force=True)
+            formats = None
+            if args.format:
+                formats = list(ClipFormat) if args.format == "both" else [ClipFormat(args.format)]
+            pipeline.process(SourceVideo(id=vid, title=""), force=True, formats=formats)
         else:
             while True:
                 pipeline.run_once()

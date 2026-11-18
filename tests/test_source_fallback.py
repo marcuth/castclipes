@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
 
-from jaguar_xiv_missao.models import SourceVideo
-from jaguar_xiv_missao.sources import rss
-from jaguar_xiv_missao.sources.rss import RssVideoSource
+from castclipes.models import SourceVideo
+from castclipes.sources import rss
+from castclipes.sources.rss import RssVideoSource
 
 
 def _boom(_playlist_id):

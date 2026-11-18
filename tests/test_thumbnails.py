@@ -4,14 +4,14 @@ from types import SimpleNamespace
 import numpy as np
 from PIL import Image
 
-from jaguar_xiv_missao.models import ClipCandidate, ClipMetadata
-from jaguar_xiv_missao.thumbnails import template
-from jaguar_xiv_missao.thumbnails.base import BUNDLED_FONT, NullThumbnailGenerator
-from jaguar_xiv_missao.thumbnails.faces import FaceBox
-from jaguar_xiv_missao.thumbnails.frames import sample_times
-from jaguar_xiv_missao.thumbnails.layout import compose, fit_text
-from jaguar_xiv_missao.thumbnails.scoring import score_frame, usable_faces
-from jaguar_xiv_missao.thumbnails.template import (
+from castclipes.models import ClipCandidate, ClipMetadata
+from castclipes.thumbnails import template
+from castclipes.thumbnails.base import BUNDLED_FONT, NullThumbnailGenerator
+from castclipes.thumbnails.faces import FaceBox
+from castclipes.thumbnails.frames import sample_times
+from castclipes.thumbnails.layout import compose, fit_text
+from castclipes.thumbnails.scoring import score_frame, usable_faces
+from castclipes.thumbnails.template import (
     BestFrame,
     FrameSelector,
     XpictThumbnailGenerator,

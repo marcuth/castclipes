@@ -16,14 +16,12 @@ class StateStore:
             CREATE TABLE IF NOT EXISTS videos (
                 id TEXT PRIMARY KEY, status TEXT NOT NULL, reason TEXT, updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS clips (
-                source_id TEXT NOT NULL, start REAL NOT NULL, end REAL NOT NULL,
-                title TEXT, youtube_id TEXT, published_at TEXT,
-                PRIMARY KEY (source_id, start, end));
+                source_id TEXT NOT NULL, format TEXT NOT NULL, start REAL NOT NULL,
+                end REAL NOT NULL, title TEXT, youtube_id TEXT, published_at TEXT,
+                scheduled_for TEXT,
+                PRIMARY KEY (source_id, format, start, end));
             """
         )
-        columns = {row[1] for row in self._db.execute("PRAGMA table_info(clips)")}
-        if "scheduled_for" not in columns:  # bancos antigos
-            self._db.execute("ALTER TABLE clips ADD COLUMN scheduled_for TEXT")
 
     @staticmethod
     def _now() -> str:
@@ -58,21 +56,22 @@ class StateStore:
         ).fetchone()
         return datetime.fromisoformat(row[0]) if row else None
 
-    def clip_done(self, source_id: str, start: float, end: float) -> bool:
+    def clip_done(self, source_id: str, fmt: str, start: float, end: float) -> bool:
         row = self._db.execute(
-            "SELECT 1 FROM clips WHERE source_id=? AND start=? AND end=?", (source_id, start, end)
+            "SELECT 1 FROM clips WHERE source_id=? AND format=? AND start=? AND end=?",
+            (source_id, fmt, start, end),
         ).fetchone()
         return row is not None
 
     def record_clip(
-        self, source_id: str, start: float, end: float, title: str, youtube_id: str | None,
-        scheduled_for: datetime | None = None,
+        self, source_id: str, fmt: str, start: float, end: float, title: str,
+        youtube_id: str | None, scheduled_for: datetime | None = None,
     ) -> None:
         self._db.execute(
             "INSERT OR REPLACE INTO clips"
-            "(source_id,start,end,title,youtube_id,published_at,scheduled_for) "
-            "VALUES(?,?,?,?,?,?,?)",
-            (source_id, start, end, title, youtube_id, self._now(),
+            "(source_id,format,start,end,title,youtube_id,published_at,scheduled_for) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            (source_id, fmt, start, end, title, youtube_id, self._now(),
              scheduled_for.isoformat() if scheduled_for else None),
         )
         self._db.commit()

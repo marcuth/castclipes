@@ -45,30 +45,32 @@ class Settings(BaseSettings):
     costuma publicar a legenda automática pouco depois do fim da live."""
 
     # ---------- Relevância ----------
-    target_keywords: CsvList = Field(
-        default_factory=lambda: [
-            "renan santos", "arthur do val", "mamaefalei", "kim kataguiri", "mbl",
-            "movimento brasil livre", "partido missão", "partido missao", "missão",
-        ]
-    )
-    """Termos que tornam um vídeo candidato. Comparação sem acento/caixa."""
-    min_keyword_mentions: int = 3
-    """Menções mínimas na transcrição para seguir para a IA."""
     triage_min_score: float = 0.7
     """Nota mínima (0-1) para gastar download+Whisper em vídeo sem legenda."""
 
-    # ---------- Seleção dos cortes ----------
-    # Padrão do canal analisado: cortes de 11 a 41 min (mediana 22), um assunto por corte.
-    clip_min_seconds: int = 600
-    clip_max_seconds: int = 2400
-    clip_target_seconds: int = 1320
-    clip_min_score: float = 0.6
-    max_clips_per_video: int = 3
+    # ---------- Formatos de corte ----------
+    clip_formats: CsvList = Field(default_factory=lambda: ["long", "short"])
+    """Quais formatos gerar de cada live: `long` (16:9), `short` (9:16) ou os dois."""
     clip_edge_padding_seconds: float = 0.5
-    """Folga antes/depois do corte, ajustada às fronteiras de frase."""
+    """Folga antes/depois do corte longo, ajustada às fronteiras de frase."""
     selection_window_seconds: int = 3600
     selection_window_overlap_seconds: int = 300
     """Transcrições longas são analisadas em janelas para caber no contexto da IA."""
+
+    # Corte longo: um assunto do começo ao fim
+    long_min_seconds: int = 600
+    long_max_seconds: int = 2400
+    long_target_seconds: int = 1320
+    long_min_score: float = 0.6
+    max_long_per_video: int = 3
+
+    # Short: um gancho forte, vertical
+    short_min_seconds: int = 20
+    short_max_seconds: int = 85
+    short_target_seconds: int = 45
+    short_min_score: float = 0.7
+    max_shorts_per_video: int = 8
+    short_edge_padding_seconds: float = 0.2
 
     # ---------- Corte de silêncio ----------
     silence_cut_enabled: bool = True
@@ -78,23 +80,49 @@ class Settings(BaseSettings):
     silence_keep_padding_seconds: float = 0.25
     """Quanto da pausa é mantido em cada ponta."""
 
-    # ---------- Overlays ----------
+    # ---------- Molduras e overlays ----------
+    long_frame_path: Path | None = None
+    """Moldura PNG com transparência (16:9) sobre os cortes longos, esticada ao vídeo."""
+    short_frame_path: Path | None = None
+    """Moldura PNG com transparência (9:16) sobre os shorts, esticada ao vídeo."""
     watermark_path: Path | None = None
+    """Marca d'água opcional, aplicada por cima da moldura nos dois formatos."""
     watermark_position: Position = "top-right"
     watermark_width_pct: float = 0.14
     watermark_opacity: float = 0.85
     watermark_margin_px: int = 24
     watermark_fit: OverlayFit = "width"
-    """stretch = ocupa o vídeo inteiro (moldura), esticada à largura e altura do vídeo; ignora
+    """stretch = ocupa o vídeo inteiro (esticada à largura e altura do vídeo); ignora
     posição, largura e margem."""
     cta_video_path: Path | None = None
-    """Vídeo de CTA/anúncio inserido no meio do corte (sem overlays), numa pausa entre frases."""
+    """Vídeo de CTA/anúncio inserido no meio do corte longo (sem overlays), numa pausa entre frases."""
     cta_position_pct: float = 0.5
     """Ponto do corte (0 a 1) onde o CTA entra; vai para a melhor fronteira de frase perto dele."""
     cta_min_clip_seconds: float = 480.0
-    """Cortes mais curtos que isso não recebem CTA."""
+    """Cortes longos mais curtos que isso não recebem CTA."""
     outro_path: Path | None = None
-    """Vídeo opcional anexado ao fim de cada corte."""
+    """Vídeo opcional anexado ao fim de cada corte longo."""
+
+    # ---------- Shorts (9:16) ----------
+    short_width: int = 1080
+    short_height: int = 1920
+    short_framing_sample_fps: int = 5
+    """Quadros por segundo analisados para achar rostos (mais = mais preciso e mais lento)."""
+    short_split_screen: bool = True
+    """Divide a tela em dois blocos quando há dois interlocutores na cena."""
+    short_split_chance: float = 0.5
+    """Probabilidade de usar o split-screen num short em que há dois rostos (0 a 1)."""
+    short_captions: bool = True
+    """Queima legendas palavra a palavra (ASS) nos shorts."""
+    short_captions_whisper: bool = True
+    """Re-transcreve cada short com Whisper para ter o tempo exato de cada palavra. Sem o extra
+    `whisper` (ou com False), o tempo das palavras é estimado a partir da legenda do vídeo."""
+    short_caption_highlight: str = "#FFD400"
+    """Cor da palavra que está sendo falada."""
+    short_caption_font_path: Path | None = None
+    """Vazio = Anton (OFL), embutida no pacote."""
+    short_caption_margin_v: int = 520
+    """Distância da legenda até a base do vídeo (px, em 1920 de altura)."""
 
     # ---------- Render ----------
     render_engine: Literal["ffmpeg", "moviepy"] = "ffmpeg"
@@ -104,6 +132,7 @@ class Settings(BaseSettings):
     render_crf: int = 21
     render_threads: int = 4
     max_source_height: int = 1080
+    """Altura máxima do vídeo baixado (os shorts saem em SHORT_WIDTH x SHORT_HEIGHT)."""
 
     # ---------- IA (AI SDK para Python, pacote `ai`) ----------
     ai_provider: str = "openai"
@@ -131,18 +160,13 @@ class Settings(BaseSettings):
 
     # ---------- Metadados de publicação ----------
     title_max_chars: int = 100
-    fixed_tags: CsvList = Field(
-        default_factory=lambda: [
-            "cortes do mbl", "renan santos", "kim kataguiri", "arthur do val",
-            "mamaefalei", "mbl", "movimento brasil livre", "partido missao",
-        ]
-    )
-    fixed_hashtags: CsvList = Field(
-        default_factory=lambda: [
-            "cortesmbl", "partidomissao", "mbl", "renansantos", "mamaefalei", "kimkataguiri"
-        ]
-    )
+    title_style: Literal["natural", "upper"] = "natural"
+    """natural = frase como a IA escreveu (1ª letra maiúscula). upper = CAIXA ALTA com
+    preposições em minúsculo."""
+    fixed_tags: CsvList = Field(default_factory=lambda: ["podcast", "cortes de podcast"])
+    fixed_hashtags: CsvList = Field(default_factory=lambda: ["podcast", "cortes"])
     channel_name: str = ""
+    """Nome do SEU canal de cortes (aparece no prompt de metadados)."""
     description_header: str = ""
     description_footer: str = ""
     social_links: CsvList = Field(default_factory=list)
@@ -153,8 +177,8 @@ class Settings(BaseSettings):
     # ---------- Publicação ----------
     publish_mode: Literal["youtube", "dry_run"] = "dry_run"
     youtube_privacy_status: Literal["private", "unlisted", "public"] = "private"
-    youtube_category_id: str = "25"
-    """25 = Notícias e política."""
+    youtube_category_id: str = "22"
+    """22 = Pessoas e blogs; 24 = Entretenimento; 25 = Notícias e política."""
     youtube_client_secrets_file: Path = Path("secrets/client_secret.json")
     youtube_token_file: Path = Path("secrets/youtube_token.json")
     max_publish_per_day: int = 5
@@ -175,7 +199,8 @@ class Settings(BaseSettings):
 
     # ---------- Thumbnails ----------
     thumbnail_provider: Literal["none", "template"] = "none"
-    """template = melhor frame (rosto + fundo limpo, via MediaPipe) + texto em template xpict.
+    """Só para cortes longos (o YouTube não aceita thumbnail própria em Shorts).
+    template = melhor frame (rosto + fundo limpo, via MediaPipe) + texto em template xpict.
     Sem IA generativa."""
     thumbnail_sample_count: int = 24
     thumbnail_face_min_confidence: float = 0.6
@@ -191,8 +216,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     @field_validator(
-        "source_live_playlist_ids", "target_keywords", "transcript_languages", "fixed_tags",
-        "fixed_hashtags", "social_links", "publish_slots",
+        "source_live_playlist_ids", "transcript_languages", "fixed_tags",
+        "fixed_hashtags", "social_links", "publish_slots", "clip_formats",
         mode="before",
     )
     @classmethod
@@ -201,11 +226,21 @@ class Settings(BaseSettings):
 
     @field_validator(
         "watermark_path", "cta_video_path", "outro_path", "thumbnail_font_path", "thumbnail_logo_path",
+        "long_frame_path", "short_frame_path", "short_caption_font_path",
         mode="before",
     )
     @classmethod
     def _empty_path_is_none(cls, value: object) -> object:
         return None if value in ("", None) else value
+
+    @field_validator("clip_formats")
+    @classmethod
+    def _formats(cls, value: list[str]) -> list[str]:
+        formats = [v.lower() for v in value]
+        unknown = set(formats) - {"long", "short"}
+        if unknown or not formats:
+            raise ValueError(f"CLIP_FORMATS aceita long e/ou short (recebido: {value})")
+        return list(dict.fromkeys(formats))
 
     @property
     def work_dir(self) -> Path:

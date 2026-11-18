@@ -1,75 +1,73 @@
-<p align="center">
-  <img src="docs/images/jaugar-circle.png" alt="Jaguar XIV" width="200">
-</p>
-
-<h1 align="center">Jaguar XIV</h1>
+<h1 align="center">CastClipes</h1>
 
 <p align="center">
-  <em>Um funcionário virtual que assiste às lives por você e entrega os melhores momentos.</em>
-</p>
-
-<p align="center">
-  📺 <a href="https://www.youtube.com/@jaguarxiv">Canal no YouTube: @jaguarxiv</a>
+  <em>Um funcionário virtual que acompanha as lives dos seus podcasts favoritos e entrega cortes longos e shorts prontos para postar.</em>
 </p>
 
 ---
 
 ## O que é isso?
 
-As lives do MBL, do Renan Santos, do Arthur do Val e do Partido Missão duram horas. Quase ninguém tem tempo de assistir a tudo, e os melhores momentos acabam se perdendo no meio da conversa.
+Podcasts duram horas e os melhores momentos se perdem no meio da conversa. O CastClipes faz o trabalho de um editor de cortes, sozinho e sem parar:
 
-O Jaguar XIV é um programa que faz o trabalho de um editor de cortes, sozinho e sem parar:
-
-1. **Fica de olho** nos canais e espera cada live terminar.
+1. **Fica de olho** nas playlists de lives dos canais que você escolheu e espera cada live terminar.
 2. **"Assiste"** à live lendo tudo o que foi dito.
-3. **Escolhe os trechos que valem a pena**: um assunto só, do começo ao fim, com conflito, emoção e uma história que se entende sem ter visto o resto.
-4. **Edita o vídeo**: corta o trecho, tira as pausas longas e deixa a fala fluindo, coloca uma moldura com a identidade do canal e encaixa um recado no meio, como um intervalo.
-5. **Escreve o título, a descrição e as tags** e monta a imagem de capa.
+3. **Escolhe os melhores momentos**, em dois formatos:
+   - **Cortes longos (16:9):** um assunto só, do começo ao fim, de 10 a 40 minutos, com as pausas longas removidas.
+   - **Shorts (9:16):** um gancho forte de 20 a 85 segundos, com o rosto de quem fala enquadrado, split-screen quando há dois interlocutores e legenda animada palavra por palavra.
+4. **Coloca a moldura** do seu canal por cima (uma para cada formato) e, nos cortes longos, encaixa um vídeo de recado no meio.
+5. **Escreve título, descrição e tags**, e monta a capa dos cortes longos.
 6. **Publica no YouTube**, espalhando os vídeos em horários distribuídos ao longo do dia.
 
 Tudo isso sem ninguém apertar um botão.
 
 ## Como ele decide o que é um bom corte?
 
-Ele usa inteligência artificial como um "olheiro": a IA lê a transcrição da live e **sugere** onde estão os melhores momentos. Mas quem tem a última palavra é o código, que segue regras fixas:
+Ele usa inteligência artificial como um "olheiro": a IA lê a transcrição da live e **sugere** os melhores momentos. Mas quem tem a última palavra é o código, que segue regras fixas:
 
-- o corte precisa ter entre 10 e 40 minutos;
+- o corte precisa respeitar a duração do formato (longo ou short);
 - precisa começar e terminar no fim de uma frase, nunca no meio de uma palavra;
 - precisa ter nota boa;
 - não pode repetir trechos já usados.
 
-A ideia é simples: **a IA dá a sugestão, o programa confere se a sugestão faz sentido.** Assim, um palpite errado da IA não vira, sozinho, um vídeo ruim.
+**A IA dá a sugestão, o programa confere se a sugestão faz sentido.** Assim, um palpite errado da IA não vira, sozinho, um vídeo ruim.
 
-## A capa do vídeo, sem inventar imagem
+## Como o short fica vertical?
 
-A imagem de capa (thumbnail) **não é gerada por IA**. O programa olha dezenas de momentos do corte, procura o quadro em que o rosto aparece bem enquadrado, com o fundo mais limpo possível, dá um zoom e escreve por cima uma frase curta e chamativa. É o mesmo trabalho que um editor faria à mão, só que automático.
+Um vídeo de podcast é horizontal, então o programa precisa decidir o que mostrar na tela vertical. Ele analisa o corte, acha os rostos, percebe quem está falando (pelo movimento da boca) e acompanha essa pessoa, com zoom quando ela está longe da câmera. Quando há dois interlocutores, pode dividir a tela em dois blocos empilhados. As legendas aparecem palavra por palavra, e a palavra que está sendo dita acende.
 
 ## O que ele não faz
 
-Honestidade vale mais que propaganda:
-
 - **Não acompanha a live em tempo real.** Ele espera a transmissão acabar para só então trabalhar.
-- **Não sabe quem está falando.** A transcrição vem sem o nome de quem fala, então ele evita afirmar "fulano disse" quando não tem certeza.
-- **Não é perfeito.** A IA erra de vez em quando, e os títulos e cortes passam por ajustes constantes. É um projeto em evolução.
-- **Não é jornalista nem checador de fatos.** Ele recorta o que foi dito nas lives; não verifica nem opina.
+- **Não sabe quem está falando pela voz.** A transcrição vem sem o nome de quem fala, então ele evita afirmar "fulano disse" quando não tem certeza.
+- **Não é perfeito.** A IA erra de vez em quando; revise o que sai antes de soltar no automático (o modo `dry_run` e o envio como privado existem para isso).
+- **Não aceita capa própria em Shorts.** O YouTube não permite; a capa vale só para os cortes longos.
 
 ## De onde vêm os vídeos?
 
-Os cortes usam o conteúdo das lives originais. Por isso, toda descrição **dá o crédito e o link do vídeo original**: quem quiser ver a conversa completa chega nela com um clique.
+Os cortes usam o conteúdo das lives originais. Por isso, toda descrição **dá o crédito e o link do episódio original**. Confira a política de cada canal-fonte antes de publicar.
 
-## Curiosidades
+## Começando
 
-- Quase tudo roda **no computador de quem opera**, sem depender de serviços de edição de vídeo na nuvem.
-- Foi pensado para seguir o estilo dos canais de cortes que já existem: títulos em caixa alta, cortes longos e um assunto por vídeo.
-- Ele não tem pressa nem sono: se uma live acaba de madrugada, o corte sai pronto e fica na fila para ser publicado no horário certo.
+```powershell
+pip install -e .[dev]          # Whisper local (opcional): .[whisper]
+copy .env.example .env         # preencha pelo menos as playlists e a chave de IA
+python -m castclipes resolve-channel @canaldopodcast   # descobre o ID da playlist de lives
+python -m castclipes process https://www.youtube.com/watch?v=ID --format short   # teste em um vídeo
+python -m castclipes watch     # fica monitorando as lives
+```
+
+Todas as variáveis estão comentadas no [`.env.example`](.env.example). O programa começa em `PUBLISH_MODE=dry_run`: renderiza tudo em `data/clips/` mas não envia nada ao YouTube.
+
+**Molduras:** coloque um PNG com transparência em `LONG_FRAME_PATH` (1920x1080) e outro em `SHORT_FRAME_PATH` (1080x1920). A moldura é esticada sobre o vídeo inteiro, então use a proporção do formato.
 
 ## Quer ver por dentro?
 
-Para quem tem curiosidade técnica, a pasta [`docs/`](docs/README.md) explica o funcionamento em detalhes, assunto por assunto: [como o fluxo funciona](docs/pipeline.md), [como os cortes são escolhidos](docs/clip-selection.md), [como o vídeo é editado](docs/video-editing.md), [como as capas são feitas](docs/thumbnails.md) e [como a publicação é agendada](docs/publishing.md).
+A pasta [`docs/`](docs/README.md) explica o funcionamento em detalhes, assunto por assunto: [o fluxo](docs/pipeline.md), [como os cortes são escolhidos](docs/clip-selection.md), [como o vídeo é editado](docs/video-editing.md), [como os shorts são feitos](docs/shorts.md), [as capas](docs/thumbnails.md) e [a publicação agendada](docs/publishing.md).
 
-## Aviso
+## Créditos
 
-Este é um projeto **independente e não oficial**. O autor, Marcuth, **não tem nenhuma ligação com o MBL ou com o Partido Missão**: é apenas um apoiador.
+O enquadramento por rosto, o split-screen e as legendas dos shorts foram portados do [podcast-clipper](https://github.com/marcuth/podcast-clipper).
 
 ## Licença
 

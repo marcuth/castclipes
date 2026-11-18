@@ -3,9 +3,9 @@ import subprocess
 import pytest
 from PIL import Image, ImageDraw
 
-from jaguar_xiv_missao.editing.ffmpeg_renderer import FfmpegRenderer, probe
-from jaguar_xiv_missao.editing.overlay import ImageOverlay
-from jaguar_xiv_missao.editing.silence import ffmpeg_exe
+from castclipes.editing.ffmpeg_renderer import FfmpegRenderer, probe
+from castclipes.editing.overlay import ImageOverlay
+from castclipes.editing.silence import ffmpeg_exe
 
 
 def _ffmpeg_works() -> bool:

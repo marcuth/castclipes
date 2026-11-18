@@ -1,8 +1,8 @@
 import pytest
 
-from jaguar_xiv_missao.ai.factory import create_llm_client
-from jaguar_xiv_missao.analysis.triage import TriageVerdict
-from jaguar_xiv_missao.config import Settings
+from castclipes.ai.factory import create_llm_client
+from castclipes.analysis.triage import TriageVerdict
+from castclipes.config import Settings
 
 
 def make_client(monkeypatch, outcomes, **overrides):

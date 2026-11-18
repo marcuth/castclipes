@@ -1,6 +1,6 @@
 # Transcrição e relevância
 
-Código: `transcription/`, `analysis/triage.py`, `analysis/text.py`, parte de `pipeline.py`.
+Código: `transcription/`, `analysis/triage.py`, parte de `pipeline.py`.
 
 ## Ordem de tentativas
 
@@ -37,16 +37,6 @@ pip install -e .[whisper]
 Variáveis: `WHISPER_MODEL` (padrão `small`), `WHISPER_DEVICE` (`auto`), `WHISPER_COMPUTE_TYPE` (`int8`). Sem o pacote instalado, o erro orienta a instalação.
 
 Se nenhuma fonte entregar transcrição, o vídeo é marcado `skipped` com `não foi possível transcrever`.
-
-## Pré-filtro de menções
-
-Depois de ter a transcrição, `count_mentions` procura os `TARGET_KEYWORDS` no texto concatenado de **título + descrição + transcrição**.
-
-- A comparação ignora maiúsculas e acentos (`normalize`).
-- Casa palavra inteira (`(?<!\w)termo(?!\w)`), então "mbl" não casa dentro de outra palavra.
-- Precisa de pelo menos `MIN_KEYWORD_MENTIONS` ocorrências (padrão 3), senão: `poucas menções aos alvos`.
-
-É o filtro mais barato do pipeline e roda antes de qualquer gasto de IA na seleção.
 
 ## Sem identificação de falantes
 

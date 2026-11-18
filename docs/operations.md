@@ -17,14 +17,15 @@ Requisitos externos:
 ## Comandos
 
 ```powershell
-python -m jaguar_xiv_missao resolve-channel @TVdoMBL   # imprime o ID da playlist de lives
-python -m jaguar_xiv_missao run                        # uma verificação dos feeds
-python -m jaguar_xiv_missao watch                      # loop contínuo (POLL_INTERVAL_SECONDS)
-python -m jaguar_xiv_missao process <url-ou-id>        # um vídeo específico (ignora regras de live)
-python -m jaguar_xiv_missao auth-youtube               # login OAuth (PUBLISH_MODE=youtube)
+python -m castclipes resolve-channel @canal       # imprime o ID da playlist de lives
+python -m castclipes run                        # uma verificação dos feeds
+python -m castclipes watch                      # loop contínuo (POLL_INTERVAL_SECONDS)
+python -m castclipes process <url-ou-id>        # um vídeo específico (ignora regras de live)
+python -m castclipes process <url-ou-id> --format short   # só shorts (long | short | both)
+python -m castclipes auth-youtube               # login OAuth (PUBLISH_MODE=youtube)
 ```
 
-O script instalado também responde como `jaguar`.
+O script instalado também responde como `castclipes`.
 
 - `run` serve para testar e para agendadores externos (cron, Agendador de Tarefas).
 - `watch` é o modo "funcionário virtual": repete `run` sem parar; `Ctrl+C` encerra e fecha o banco.
@@ -35,24 +36,24 @@ O script instalado também responde como `jaguar`.
 ## Primeira execução recomendada
 
 1. `PUBLISH_MODE=dry_run`, `THUMBNAIL_PROVIDER=none`.
-2. `python -m jaguar_xiv_missao process <url de uma live recente>`.
-3. Confira em `data/clips/` o `.mp4` (moldura, CTA, qualidade do corte) e o log do título/descrição.
+2. `python -m castclipes process <url de uma live recente>`.
+3. Confira em `data/clips/` os `.mp4`: no longo, moldura, CTA e qualidade do corte; no short, enquadramento do rosto, split-screen, legendas e moldura vertical. Veja também o log do título/descrição.
 4. Ligue a thumbnail e confira o `.jpg`.
 5. Rode `auth-youtube`, mude para `PUBLISH_MODE=youtube` com `YOUTUBE_PRIVACY_STATUS=private` e publique um corte de teste.
 6. Só então use `public` ou a fila de postagem.
 
 ## Lendo o log
 
-Mensagens principais (logger `jaguar`):
+Mensagens principais (logger `castclipes`):
 
 | Mensagem | Significado |
 |---|---|
 | `Novo vídeo: ...` | Vídeo entrou no processamento |
 | `Aguardando <id>: ...` | Live não pronta ou esperando legenda |
-| `Ignorado <id>: <motivo>` | Descartado (`antigo demais`, `poucas menções aos alvos`, etc.) |
+| `Ignorado <id>: <motivo>` | Descartado (`antigo demais`, `muito curto`, `não é uma live`, etc.) |
 | `Transcrição <fonte> de <id>: N segmentos` | Transcrição obtida |
-| `Corte <id> [ini-fim s, N min, nota X]: tema` | Candidato aprovado |
-| `Renderizado: <arquivo> (N min)` | Corte pronto |
+| `Corte <formato> <id> [ini-fim s, N min, nota X]: tema` | Candidato aprovado |
+| `Renderizado (<formato>): <arquivo> (N min)` | Corte pronto |
 | `Agendado para <horário> (<título>)` | Fila de postagem |
 | `Publicado: <url>` | Enviado |
 | `Erro em <id>: ...` | Falha; o vídeo será tentado de novo |

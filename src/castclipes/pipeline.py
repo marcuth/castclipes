@@ -1,4 +1,4 @@
-"""Orquestração: descobrir -> transcrever -> selecionar -> baixar -> editar -> publicar."""
+"""Orquestração: descobrir -> transcrever -> selecionar (long/short) -> baixar -> editar -> publicar."""
 
 from __future__ import annotations
 
@@ -9,13 +9,14 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .analysis.selector import ClipSelector
-from .analysis.text import count_mentions
 from .analysis.triage import VideoTriage
+from .captions.words import WordAligner
 from .config import Settings
 from .downloader import VideoDownloader
 from .editing.insertion import choose_insert_point
 from .editing.renderer import Renderer
 from .editing.silence import SilenceDetector, plan_keep_ranges
+from .editing.vertical_renderer import ShortRenderer
 from .events import (
     ClipPublished,
     ClipRendered,
@@ -28,7 +29,7 @@ from .events import (
     VideoWaiting,
 )
 from .metadata.generator import MetadataGenerator
-from .models import ClipCandidate, RenderedClip, SourceVideo, Transcript
+from .models import ClipCandidate, ClipFormat, RenderedClip, SourceVideo, Transcript
 from .publishing.base import Publisher
 from .publishing.schedule import next_slot
 from .sources.base import VideoSource
@@ -47,9 +48,11 @@ class Pipeline:
     primary_transcriber: TranscriptProvider
     fallback_transcriber: TranscriptProvider
     triage: VideoTriage
-    selector: ClipSelector
+    selectors: dict[ClipFormat, ClipSelector]
     silence: SilenceDetector
     renderer: Renderer
+    short_renderer: ShortRenderer
+    aligner: WordAligner
     metadata: MetadataGenerator
     thumbnails: ThumbnailGenerator
     publisher: Publisher
@@ -63,8 +66,16 @@ class Pipeline:
                 continue
             self.process(video)
 
-    def process(self, video: SourceVideo, *, force: bool = False) -> None:
-        """`force` ignora as regras de live (usado no comando `process` manual)."""
+    @property
+    def formats(self) -> list[ClipFormat]:
+        return [ClipFormat(f) for f in self.settings.clip_formats]
+
+    def process(
+        self, video: SourceVideo, *, force: bool = False,
+        formats: list[ClipFormat] | None = None,
+    ) -> None:
+        """`force` ignora as regras de live (usado no comando `process` manual).
+        `formats` substitui CLIP_FORMATS nesta execução."""
         s = self.settings
         self.bus.publish(VideoDiscovered(video))
         try:
@@ -79,10 +90,8 @@ class Pipeline:
             transcript = self._transcribe(video, force)
             if transcript is None:
                 return
-            if not self._mentions_enough(video, transcript):
-                return self._skip(video, "poucas menções aos alvos")
 
-            candidates = self.selector.select(video, transcript)
+            candidates = self._select(video, transcript, formats or self.formats)
             self.bus.publish(ClipsSelected(video, candidates))
             if not candidates:
                 return self._skip(video, "IA não encontrou cortes bons")
@@ -97,7 +106,8 @@ class Pipeline:
                         logger.warning("Fila de postagem cheia (%d dias); retomo quando liberar",
                                        s.publish_queue_days)
                         return
-                    if self.store.clip_done(video.id, candidate.start, candidate.end):
+                    if self.store.clip_done(
+                            video.id, candidate.format.value, candidate.start, candidate.end):
                         continue
                     if source_file is None:  # baixa o vídeo completo uma vez; cortes são locais
                         source_file = self.downloader.download_video(video)
@@ -155,18 +165,54 @@ class Pipeline:
             return True
         return False
 
-    def _mentions_enough(self, video: SourceVideo, transcript: Transcript) -> bool:
-        text = f"{video.title} {video.description} {transcript.full_text}"
-        mentions = count_mentions(text, self.settings.target_keywords)
-        return mentions >= self.settings.min_keyword_mentions
+    def _select(
+        self, video: SourceVideo, transcript: Transcript, formats: list[ClipFormat]
+    ) -> list[ClipCandidate]:
+        """Cortes de todos os formatos pedidos: longos primeiro, depois shorts.
+        Formatos diferentes podem se sobrepor (um short pode sair de dentro de um corte longo)."""
+        candidates: list[ClipCandidate] = []
+        for fmt in (ClipFormat.LONG, ClipFormat.SHORT):
+            if fmt in formats:
+                candidates += self.selectors[fmt].select(video, transcript)
+        return candidates
 
     def _make_clip(
         self, video: SourceVideo, candidate: ClipCandidate, source_file: Path,
         transcript: Transcript,
     ) -> None:
         s = self.settings
-        stem = f"{video.id}_{int(candidate.start)}_{int(candidate.end)}"
+        stem = f"{video.id}_{candidate.format.value}_{int(candidate.start)}_{int(candidate.end)}"
         out = s.output_dir / f"{stem}.mp4"
+        if candidate.format is ClipFormat.SHORT:
+            duration = self._render_short(candidate, source_file, transcript, out)
+        else:
+            duration = self._render_long(candidate, source_file, transcript, out)
+        clip = RenderedClip(candidate, video, out, duration)
+        clip.metadata = self.metadata.generate(video, candidate)
+        if candidate.format is ClipFormat.LONG:  # Shorts não aceitam thumbnail própria
+            try:
+                clip.thumbnail_path = self.thumbnails.generate(
+                    video, candidate, clip.metadata, s.output_dir / f"{stem}.jpg", source_file
+                )
+            except Exception:  # thumbnail é opcional: nunca derruba a publicação
+                logger.exception("Falha ao gerar a thumbnail de %s; publicando sem ela", video.id)
+        self.bus.publish(ClipRendered(clip))
+        slot = self._next_slot() if s.publish_schedule_enabled else None
+        result = self.publisher.publish(clip, publish_at=slot)
+        self.store.record_clip(
+            video.id, candidate.format.value, candidate.start, candidate.end,
+            clip.metadata.title, result.video_id,
+            scheduled_for=slot if result.video_id else None,
+        )
+        if slot is not None:
+            logger.info("Agendado para %s (%s)", slot.astimezone(ZoneInfo(s.publish_timezone)),
+                        clip.metadata.title)
+        self.bus.publish(ClipPublished(clip, result))
+
+    def _render_long(
+        self, candidate: ClipCandidate, source_file: Path, transcript: Transcript, out: Path
+    ) -> float:
+        s = self.settings
         keep = [(candidate.start, candidate.end)]
         if s.silence_cut_enabled:
             silences = self.silence.detect(source_file, candidate.start, candidate.end)
@@ -180,26 +226,20 @@ class Pipeline:
             insert_at = choose_insert_point(
                 transcript, candidate.start, candidate.end, s.cta_position_pct
             )
-        duration = self.renderer.render(source_file, keep, out, insert_at=insert_at)
-        clip = RenderedClip(candidate, video, out, duration)
-        clip.metadata = self.metadata.generate(video, candidate)
-        try:
-            clip.thumbnail_path = self.thumbnails.generate(
-                video, candidate, clip.metadata, s.output_dir / f"{stem}.jpg", source_file
-            )
-        except Exception:  # thumbnail é opcional: nunca derruba a publicação
-            logger.exception("Falha ao gerar a thumbnail de %s; publicando sem ela", video.id)
-        self.bus.publish(ClipRendered(clip))
-        slot = self._next_slot() if s.publish_schedule_enabled else None
-        result = self.publisher.publish(clip, publish_at=slot)
-        self.store.record_clip(
-            video.id, candidate.start, candidate.end, clip.metadata.title, result.video_id,
-            scheduled_for=slot if result.video_id else None,
-        )
-        if slot is not None:
-            logger.info("Agendado para %s (%s)", slot.astimezone(ZoneInfo(s.publish_timezone)),
-                        clip.metadata.title)
-        self.bus.publish(ClipPublished(clip, result))
+        return self.renderer.render(source_file, keep, out, insert_at=insert_at)
+
+    def _render_short(
+        self, candidate: ClipCandidate, source_file: Path, transcript: Transcript, out: Path
+    ) -> float:
+        """Shorts não passam pelo corte de silêncio: as legendas dependem do tempo original."""
+        words = []
+        if self.settings.short_captions:
+            words = self.aligner.align(source_file, candidate, transcript)
+            if not words:
+                logger.warning(
+                    "Sem palavras para legendar o short %s-%s", candidate.start, candidate.end
+                )
+        return self.short_renderer.render(source_file, candidate.start, candidate.end, out, words)
 
     def _next_slot(self) -> datetime | None:
         return next_slot(self.store.scheduled_times(), self.settings)

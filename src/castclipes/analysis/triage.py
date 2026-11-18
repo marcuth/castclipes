@@ -13,12 +13,11 @@ from ..models import SourceVideo
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """\
-Você filtra vídeos para um canal de cortes políticos (MBL, Partido Missão, Renan Santos,
-Arthur do Val, Kim Kataguiri). Transcrever custa caro, então só aprove vídeos que
-provavelmente tenham conteúdo longo e rico, com esses nomes como protagonistas ou alvo
-(entrevistas, lives, debates, reações). Reprove clipes curtos, música, notícias genéricas,
-vídeos sem relação.
+SYSTEM_PROMPT = """Você filtra vídeos para um canal de cortes de PODCAST. Transcrever custa caro, então só aprove
+vídeos que provavelmente sejam uma conversa longa e rica (podcast, entrevista, bate-papo,
+debate, mesa-redonda) com momentos que rendam cortes. Reprove clipes curtos, música, jogos
+sem conversa, avisos, vídeos de espera/contagem regressiva e qualquer coisa que não seja
+conversa.
 Dê uma nota de 0.0 a 1.0 e uma justificativa curta."""
 
 

@@ -1,5 +1,5 @@
-from jaguar_xiv_missao.analysis.constraints import ClipConstraints, enforce, windows
-from jaguar_xiv_missao.models import ClipCandidate, Transcript, TranscriptSegment
+from castclipes.analysis.constraints import ClipConstraints, enforce, windows
+from castclipes.models import ClipCandidate, Transcript, TranscriptSegment
 
 
 def make_transcript(total: int = 3600, seg: int = 10) -> Transcript:

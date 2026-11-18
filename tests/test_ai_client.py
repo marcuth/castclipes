@@ -6,10 +6,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from jaguar_xiv_missao.ai.factory import create_llm_client
-from jaguar_xiv_missao.analysis.triage import LLMVideoTriage, TriageVerdict
-from jaguar_xiv_missao.config import Settings
-from jaguar_xiv_missao.models import SourceVideo
+from castclipes.ai.factory import create_llm_client
+from castclipes.analysis.triage import LLMVideoTriage, TriageVerdict
+from castclipes.config import Settings
+from castclipes.models import SourceVideo
 
 REQUESTS: list[dict] = []
 

@@ -15,20 +15,20 @@ Comece em `dry_run`, confira os arquivos em `data/clips/`, depois passe a `youtu
 
 1. No Google Cloud, ative a **YouTube Data API v3** e crie um OAuth client do tipo **"Aplicativo para computador"** (desktop). Não use "Aplicativo da Web".
 2. Salve o JSON em `secrets/client_secret.json` (`YOUTUBE_CLIENT_SECRETS_FILE`).
-3. Rode `python -m jaguar_xiv_missao auth-youtube`. O navegador abre, você autoriza, e o token fica em `secrets/youtube_token.json` (`YOUTUBE_TOKEN_FILE`), renovado sozinho depois.
+3. Rode `python -m castclipes auth-youtube`. O navegador abre, você autoriza, e o token fica em `secrets/youtube_token.json` (`YOUTUBE_TOKEN_FILE`), renovado sozinho depois.
 
 Escopos: `youtube.upload` e `youtube` (este necessário para definir thumbnail).
 
 ## Upload (`YouTubePublisher`)
 
 - `videos.insert` com **upload resumível** em blocos de 8 MB; o progresso aparece no log.
-- Corpo: título, descrição, tags, categoria (`YOUTUBE_CATEGORY_ID`, padrão 25 = Notícias e política), idioma `pt-BR`, `selfDeclaredMadeForKids=false`.
+- Corpo: título, descrição, tags, categoria (`YOUTUBE_CATEGORY_ID`, padrão 22 = Pessoas e blogs), idioma `pt-BR`, `selfDeclaredMadeForKids=false`.
 - Se há thumbnail, ela é enviada logo depois com `thumbnails.set`.
 - Não há retry automático em erro de conexão: um `ConnectionAbortedError` no meio do upload derruba aquele vídeo (marcado `failed`) e ele é tentado de novo na rodada seguinte, refazendo download e render.
 
 ## Cota da API
 
-O upload custa ~1.600 unidades de uma cota padrão de 10.000/dia, o que comporta cerca de 6 envios por dia. `MAX_PUBLISH_PER_DAY` limita os **envios feitos no dia** e protege essa cota. Projetos de API novos e não auditados pelo Google publicam como privado até passarem pela auditoria.
+O upload custa ~1.600 unidades de uma cota padrão de 10.000/dia, o que comporta cerca de 6 envios por dia. `MAX_PUBLISH_PER_DAY` limita os **envios feitos no dia** (cortes longos e shorts somados) e protege essa cota. Quem posta muitos shorts precisa pedir aumento de cota ao YouTube. Projetos de API novos e não auditados pelo Google publicam como privado até passarem pela auditoria.
 
 ## Fila de postagem
 
