@@ -211,6 +211,7 @@ def test_vertical_renderer_end_to_end_with_frame_and_captions(tmp_path, monkeypa
     settings = Settings(
         _env_file=None, data_dir=tmp_path, short_width=540, short_height=960, render_fps=25,
         render_preset="ultrafast", short_framing_sample_fps=2,
+        short_caption_engine="ass",
     )
     renderer = FfmpegVerticalRenderer(
         settings, [ImageOverlay(frame_png, "center", 1.0, 1.0, 0, "stretch")], random.Random(1)
@@ -244,3 +245,20 @@ def test_vertical_renderer_reports_ffmpeg_failure(tmp_path, monkeypatch):
     renderer = FfmpegVerticalRenderer(settings, [])
     with pytest.raises(RuntimeError, match="ffmpeg falhou"):
         renderer.render(source, 0.0, 1.0, tmp_path / "x.mp4", [])
+
+
+@needs_ffmpeg
+def test_vertical_renderer_falls_back_to_ass_when_remotion_fails(tmp_path, monkeypatch):
+    source = _make_source(tmp_path)
+    monkeypatch.setattr(
+        vertical_renderer, "analyze_framing", lambda *a, **k: FramingPlan(640, 360)
+    )
+    monkeypatch.setattr(vertical_renderer, "render_remotion_captions", lambda *a, **k: None)
+    settings = Settings(
+        _env_file=None, data_dir=tmp_path, short_width=540, short_height=960, render_fps=25,
+        render_preset="ultrafast", short_framing_sample_fps=2,
+    )
+    renderer = FfmpegVerticalRenderer(settings, [], random.Random(1))
+    out = tmp_path / "out" / "short.mp4"
+    renderer.render(source, 1.0, 3.0, out, [Word(0.0, 0.5, "olá")])
+    assert probe(out).has_audio

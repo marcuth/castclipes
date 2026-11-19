@@ -21,6 +21,7 @@ import numpy as np
 from PIL import Image
 
 from ..captions.ass import CaptionStyle, generate_ass
+from ..captions.remotion import render_remotion_captions
 from ..config import Settings
 from ..models import Word
 from ..vision.composer import VerticalComposer, split_ranges
@@ -112,8 +113,9 @@ class FfmpegVerticalRenderer:
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
-            captions = self._write_captions(tmp_dir, words, center)
-            cmd = self._command(source, start, duration, out, fps, captions)
+            overlay = self._remotion_overlay(tmp_dir, words, duration, center)
+            captions = overlay is None and self._write_captions(tmp_dir, words, center)
+            cmd = self._command(source, start, duration, out, fps, captions, overlay)
             self._pipe(cmd, tmp_dir, source, start, int(duration * fps), fps, composer)
         return probe(out).duration
 
@@ -129,6 +131,18 @@ class FfmpegVerticalRenderer:
             s.short_split_chance * 100,
         )
         return use
+
+    def _remotion_overlay(
+        self, tmp: Path, words: Sequence[Word], duration: float, center: list[tuple[float, float]]
+    ) -> Path | None:
+        """WebM transparente com a legenda animada, ou None (desligada ou falhou -> ASS)."""
+        s = self._s
+        if not s.short_captions or not words or s.short_caption_engine != "remotion":
+            return None
+        return render_remotion_captions(
+            words, duration, tmp / "captions.webm", center,
+            highlight=s.short_caption_highlight, bottom_offset=s.short_caption_margin_v,
+        )
 
     def _write_captions(
         self, tmp: Path, words: Sequence[Word], center: list[tuple[float, float]]
@@ -149,7 +163,8 @@ class FfmpegVerticalRenderer:
         return True
 
     def _command(
-        self, source: Path, start: float, duration: float, out: Path, fps: float, captions: bool
+        self, source: Path, start: float, duration: float, out: Path, fps: float, captions: bool,
+        caption_overlay: Path | None = None,
     ) -> list[str]:
         s = self._s
         cmd = [
@@ -170,7 +185,13 @@ class FfmpegVerticalRenderer:
             lines.append(f"[{idx}:v]scale={ow}:{oh},format=rgba{alpha}[ov{j}]")
             lines.append(f"[{current}][ov{j}]overlay=x={x}:y={y}:shortest=1[v{j + 1}]")
             current = f"v{j + 1}"
-        if captions:
+        if caption_overlay is not None:
+            idx = 2 + len(self._overlays)
+            # decoder libvpx explícito: o vp8 nativo do ffmpeg descarta o canal alfa
+            cmd += ["-c:v", "libvpx", "-i", str(caption_overlay.resolve())]
+            lines.append(f"[{idx}:v]format=rgba[cap]")
+            lines.append(f"[{current}][cap]overlay=x=0:y=0:shortest=1[outv]")
+        elif captions:
             lines.append(f"[{current}]subtitles=subs.ass:fontsdir=fonts[outv]")
         else:
             lines.append(f"[{current}]null[outv]")

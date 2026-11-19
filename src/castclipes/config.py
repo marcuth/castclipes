@@ -117,6 +117,9 @@ class Settings(BaseSettings):
     short_captions_whisper: bool = True
     """Re-transcreve cada short com Whisper para ter o tempo exato de cada palavra. Sem o extra
     `whisper` (ou com False), o tempo das palavras é estimado a partir da legenda do vídeo."""
+    short_caption_engine: Literal["remotion", "ass"] = "remotion"
+    """`remotion` = legenda animada (precisa de Node/npm; renderiza um overlay transparente).
+    `ass` = legenda queimada pelo ffmpeg. Se o Remotion falhar, cai para `ass`."""
     short_caption_highlight: str = "#FFD400"
     """Cor da palavra que está sendo falada."""
     short_caption_font_path: Path | None = None
