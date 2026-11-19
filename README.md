@@ -1,7 +1,17 @@
+<p align="center">
+  <img src="docs/castclipes-logo.png" alt="CastClipes" width="200">
+</p>
+
 <h1 align="center">CastClipes</h1>
 
 <p align="center">
   <em>Um funcionário virtual que acompanha as lives dos seus podcasts favoritos e entrega cortes longos e shorts prontos para postar.</em>
+</p>
+
+<p align="center">
+  <a href="https://www.tiktok.com/@c4stclipes">TikTok</a> ·
+  <a href="https://youtube.com/@C4stClipes">YouTube</a> ·
+  <a href="https://www.facebook.com/castclipes/">Facebook</a>
 </p>
 
 ---
