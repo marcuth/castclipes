@@ -28,6 +28,8 @@ Valores vazios em caminhos (`LONG_FRAME_PATH=`) significam "desligado".
 |---|---|---|
 | `CLIP_FORMATS` | long,short | Formatos gerados: `long`, `short` ou os dois |
 | `CLIP_EDGE_PADDING_SECONDS` | 0,5 | Folga em cada ponta do corte longo |
+| `SELECTOR_ENGINE` | ai | `ai` ou `heuristics` (regras, sem IA na escolha dos cortes) |
+| `HEURISTIC_SKIP_INTRO_SECONDS` | 120 | Modo `heuristics`: ignora o começo da live |
 | `SELECTION_WINDOW_SECONDS` | 3600 | Tamanho da janela de análise |
 | `SELECTION_WINDOW_OVERLAP_SECONDS` | 300 | Sobreposição entre janelas |
 | `LONG_MIN_SECONDS` / `LONG_MAX_SECONDS` | 600 / 2400 | Duração do corte longo |

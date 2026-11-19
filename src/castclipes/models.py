@@ -26,6 +26,8 @@ class SourceVideo:
     duration_seconds: float | None = None
     live_status: str | None = None
     """Valor do yt-dlp: is_upcoming, is_live, post_live, was_live ou not_live."""
+    heatmap: tuple[tuple[float, float, float], ...] = ()
+    """Janelas (início, fim, intensidade 0..1) do "mais reproduzido" do YouTube; vazio se não há."""
 
     @property
     def live_in_progress(self) -> bool:

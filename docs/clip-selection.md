@@ -1,6 +1,6 @@
 # Seleção de cortes
 
-Código: `analysis/selector.py` (IA) e `analysis/constraints.py` (regras fixas).
+Código: `analysis/selector.py` (IA), `analysis/heuristics.py` (alternativa sem IA) e `analysis/constraints.py` (regras fixas).
 
 Princípio: **a IA propõe, o código decide.** O prompt orienta o gosto editorial; as regras do `.env` são aplicadas depois, em código, e nunca dependem de a IA obedecer.
 
@@ -78,3 +78,15 @@ Os candidatos que sobraram viram o evento `ClipsSelected`. Lista vazia → víde
 ## Variáveis relacionadas
 
 `CLIP_FORMATS`, `LONG_*`, `MAX_LONG_PER_VIDEO`, `SHORT_MIN_SECONDS`, `SHORT_MAX_SECONDS`, `SHORT_TARGET_SECONDS`, `SHORT_MIN_SCORE`, `MAX_SHORTS_PER_VIDEO`, `SHORT_EDGE_PADDING_SECONDS`, `CLIP_EDGE_PADDING_SECONDS`, `SELECTION_WINDOW_SECONDS`, `SELECTION_WINDOW_OVERLAP_SECONDS`.
+
+## Alternativa sem IA: `SELECTOR_ENGINE=heuristics`
+
+`HeuristicClipSelector` (`analysis/heuristics.py`) troca só a escolha dos cortes; triagem e metadados continuam na IA. Portado do `podcast-clipper`:
+
+1. **Unidades:** os segmentos viram frases (fecha em pontuação final, pausa ≥ 1 s ou 14 s). A legenda automática do YouTube vem em pedaços curtos e sem pontuação, então as regras de "frase" funcionam melhor com Whisper.
+2. **Nota por unidade (0 a 1):** soma de gatilhos de atenção (+1,0), contraste (+0,7), primeira pessoa (+0,5), pergunta (+0,4), tamanho de frase (+0,3), exclamação (+0,3), risada (+0,3), número (+0,2), pausa antes (+0,2) e heatmap do YouTube (+1,5 × intensidade); satura em 3,0. CTA/patrocínio e os primeiros `HEURISTIC_SKIP_INTRO_SECONDS` zeram a nota e **bloqueiam** a unidade.
+3. **Janelas:** uma janela deslizante procura trechos dentro de `*_MIN/MAX_SECONDS`, com leve preferência pela duração ideal. Short: nenhuma unidade bloqueada e o gancho (primeiras frases) pesa 40%. Long: tolera até 5% de tempo bloqueado e usa a densidade média de nota.
+4. **Nota final:** normalizada pelo percentil 95 das janelas do próprio vídeo (com piso), para que `*_MIN_SCORE` continue fazendo sentido. Depois `enforce` aplica as regras de sempre.
+5. **Texto:** `hook` é a primeira frase; `topic` do short é essa frase, e o do long é "Conversa sobre palavra, palavra e palavra" (palavras-chave das frases de maior nota). Sem `speakers` nem `summary`.
+
+Limites: regex não entende assunto, então nos cortes **longos** a coerência vem só da densidade de nota (qualidade menor que a da IA). O heatmap ("mais reproduzido") quase nunca existe logo após a live acabar; é só um bônus quando vem no `yt-dlp`. As regras são em português do Brasil.

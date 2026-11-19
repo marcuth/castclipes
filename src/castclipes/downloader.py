@@ -37,6 +37,7 @@ class VideoDownloader:
             channel_title=info.get("channel") or video.channel_title,
             duration_seconds=info.get("duration"),
             live_status=info.get("live_status"),
+            heatmap=_heatmap(info.get("heatmap")),
         )
 
     def download_video(self, video: SourceVideo) -> Path:
@@ -80,3 +81,17 @@ class VideoDownloader:
         """Apaga o vídeo completo e restos (áudio, partes) do vídeo."""
         for candidate in self._work_dir.glob(f"{video_id}*"):
             candidate.unlink(missing_ok=True)
+
+
+def _heatmap(raw: list[dict] | None) -> tuple[tuple[float, float, float], ...]:
+    """Normaliza o heatmap do yt-dlp (start_time, end_time, value) para intensidade 0..1."""
+    if not raw:
+        return ()
+    top = max((float(e.get("value") or 0) for e in raw), default=0.0) or 1.0
+    out = []
+    for e in raw:
+        try:
+            out.append((float(e["start_time"]), float(e["end_time"]), float(e["value"]) / top))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return tuple(out)

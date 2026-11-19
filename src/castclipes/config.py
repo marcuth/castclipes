@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     """Quais formatos gerar de cada live: `long` (16:9), `short` (9:16) ou os dois."""
     clip_edge_padding_seconds: float = 0.5
     """Folga antes/depois do corte longo, ajustada às fronteiras de frase."""
+    selector_engine: Literal["ai", "heuristics"] = "ai"
+    """`ai` = a IA escolhe os cortes; `heuristics` = pontuação por regras, sem IA nesta etapa.
+    Triagem e metadados continuam usando a IA."""
+    heuristic_skip_intro_seconds: int = 120
+    """No modo `heuristics`, ignora os primeiros N segundos da live (abertura, avisos, espera)."""
     selection_window_seconds: int = 3600
     selection_window_overlap_seconds: int = 300
     """Transcrições longas são analisadas em janelas para caber no contexto da IA."""
