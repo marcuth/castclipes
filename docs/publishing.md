@@ -1,6 +1,6 @@
 # Publicação
 
-Código: `publishing/youtube.py`, `publishing/schedule.py`, `publishing/base.py`.
+Código: `publishing/youtube.py`, `publishing/facebook.py`, `publishing/multi.py`, `publishing/schedule.py`, `publishing/base.py`.
 
 ## Modos (`PUBLISH_MODE`)
 
@@ -72,6 +72,30 @@ Fila cheia faz o pipeline parar **sem marcar o vídeo**, e ele retoma quando um 
 - Fuso horário no Windows exige o pacote `tzdata`, já listado nas dependências.
 - Os "melhores horários" por padrão são só uma distribuição uniforme. Depois de algumas semanas, use o YouTube Studio (Audiência → "Quando seus espectadores estão no YouTube") para escolher os horários e colocá-los em `PUBLISH_SLOTS`.
 - A cota é consumida no dia do envio, não no dia da publicação.
+
+## Facebook (Página)
+
+Com `FACEBOOK_ENABLED=true` (e `PUBLISH_MODE=youtube`), cada corte vai também para a Página, logo depois do YouTube:
+
+| Formato | Destino | Endpoint |
+|---|---|---|
+| long | Vídeo da Página | `/{page}/videos`, upload em partes (start / transfer / finish), com a thumbnail se houver |
+| short | Reel da Página | `/{page}/video_reels` (start / upload / finish) |
+
+- **Título e descrição** são os mesmos do YouTube (no Facebook o título entra na primeira linha da descrição).
+- **Fila de postagem:** o mesmo horário do YouTube é enviado como agendamento (`scheduled_publish_time` / `video_state=SCHEDULED`). O Facebook só aceita de 10 minutos a 30 dias à frente (a fila de `PUBLISH_QUEUE_DAYS` e `PUBLISH_MIN_LEAD_MINUTES` já respeita isso com os padrões).
+- **O YouTube é o destino principal.** O estado do pipeline (`clips`, limite diário, fila) só conta o YouTube. Se o Facebook falhar, o erro vai para o log e o corte **não** é reenviado ao YouTube; esse post no Facebook não é refeito sozinho. O link do Facebook fica em `PublishResult.extra["facebook"]` e no log.
+- Reels aceitam de 3 a 90 s e 9:16: os shorts (20 a 85 s) já cabem.
+
+### Como obter as credenciais
+
+1. Em developers.facebook.com, crie um app (tipo *Business*) e adicione o produto **Facebook Login for Business** (ou use o Graph API Explorer).
+2. Gere um token de **usuário** com as permissões `pages_show_list`, `pages_read_engagement`, `pages_manage_posts` e `publish_video`, sendo você administrador da Página.
+3. Troque por um token de longa duração (`/oauth/access_token?grant_type=fb_exchange_token&client_id=...&client_secret=...&fb_exchange_token=...`).
+4. Com ele, chame `/me/accounts`: a resposta traz, para cada Página, o `id` (`FACEBOOK_PAGE_ID`) e o `access_token` **da Página** (`FACEBOOK_PAGE_ACCESS_TOKEN`). O token de Página obtido de um token de usuário de longa duração não expira.
+5. Enquanto o app está em modo de desenvolvimento, só administradores/testadores do app conseguem publicar; para publicar de verdade pode ser preciso a *App Review* das permissões.
+
+O token fica só no `.env` (que está no `.gitignore`); nunca o coloque no repositório.
 
 ## Webhook de notificação
 

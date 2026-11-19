@@ -132,7 +132,17 @@ class DryRunPublisher:
 
 
 def create_publisher(settings: Settings) -> Publisher:
-    """Simple Factory conforme PUBLISH_MODE."""
-    if settings.publish_mode == "youtube":
-        return YouTubePublisher(settings)
-    return DryRunPublisher()
+    """Simple Factory conforme PUBLISH_MODE (+ Facebook como destino extra)."""
+    if settings.publish_mode != "youtube":
+        return DryRunPublisher()
+    publisher: Publisher = YouTubePublisher(settings)
+    if settings.facebook_enabled:
+        from .facebook import FacebookPublisher
+        from .multi import MultiPublisher
+
+        if not settings.facebook_page_id or not settings.facebook_page_access_token:
+            raise ValueError(
+                "FACEBOOK_ENABLED=true exige FACEBOOK_PAGE_ID e FACEBOOK_PAGE_ACCESS_TOKEN"
+            )
+        publisher = MultiPublisher(publisher, {"facebook": FacebookPublisher(settings)})
+    return publisher

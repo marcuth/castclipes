@@ -136,3 +136,5 @@ class PublishResult:
     video_id: str | None
     url: str | None
     dry_run: bool = False
+    extra: dict[str, str] = field(default_factory=dict)
+    """Links dos destinos adicionais (ex.: `facebook`)."""

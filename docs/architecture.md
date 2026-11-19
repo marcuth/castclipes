@@ -29,7 +29,7 @@ Convenção do projeto: cada ponto de variação é um `Protocol` + implementaç
 | Interface | Implementações | Escolha |
 |---|---|---|
 | `Renderer` | `FfmpegRenderer` (padrão), `ClipRenderer` (moviepy, reserva lenta) | `RENDER_ENGINE` |
-| `Publisher` | `YouTubePublisher`, `DryRunPublisher` | `PUBLISH_MODE` |
+| `Publisher` | `YouTubePublisher`, `FacebookPublisher` (via `MultiPublisher`), `DryRunPublisher` | `PUBLISH_MODE` |
 | `ThumbnailGenerator` | `XpictThumbnailGenerator`, `NullThumbnailGenerator` | `THUMBNAIL_PROVIDER` |
 | `SilenceDetector` | `FfmpegSilenceDetector`, `NullSilenceDetector` | `SILENCE_CUT_ENABLED` |
 | `TranscriptProvider` | `YouTubeTranscriptProvider` (primário), `WhisperTranscriptProvider` (reserva) | fixo no container |

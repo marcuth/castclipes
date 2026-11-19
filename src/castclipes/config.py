@@ -184,6 +184,13 @@ class Settings(BaseSettings):
     """22 = Pessoas e blogs; 24 = Entretenimento; 25 = Notícias e política."""
     youtube_client_secrets_file: Path = Path("secrets/client_secret.json")
     youtube_token_file: Path = Path("secrets/youtube_token.json")
+    facebook_enabled: bool = False
+    """True = também publica na Página do Facebook (longo como vídeo, short como Reel).
+    Só age com PUBLISH_MODE=youtube; em dry_run nada é enviado."""
+    facebook_page_id: str = ""
+    facebook_page_access_token: str = ""
+    """Token de acesso DA PÁGINA, de longa duração (publish_video, pages_manage_posts)."""
+    facebook_api_version: str = "v23.0"
     max_publish_per_day: int = 5
     """A cota padrão da API (10.000/dia, ~1.600 por upload) comporta cerca de 6 envios/dia."""
 
