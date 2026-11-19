@@ -61,6 +61,12 @@ class Pipeline:
 
     # ---------- entrada ----------
     def run_once(self) -> None:
+        flush = getattr(self.publisher, "flush", None)
+        if flush is not None:  # reenvia/solta publicações cruzadas pendentes
+            try:
+                flush()
+            except Exception:
+                logger.exception("Falha ao processar a fila de publicação cruzada")
         for video in self.source.latest():
             if self.store.seen(video.id):
                 continue

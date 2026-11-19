@@ -11,6 +11,7 @@ from httplib2 import HttpLib2Error
 
 from ..config import Settings
 from ..models import PublishResult, RenderedClip
+from ..storage.state import StateStore
 from .base import Publisher
 
 logger = logging.getLogger(__name__)
@@ -131,18 +132,46 @@ class DryRunPublisher:
         return PublishResult(None, None, dry_run=True)
 
 
-def create_publisher(settings: Settings) -> Publisher:
-    """Simple Factory conforme PUBLISH_MODE (+ Facebook como destino extra)."""
+def create_publisher(settings: Settings, store: StateStore | None = None) -> Publisher:
+    """Simple Factory conforme PUBLISH_MODE (+ redes extras de CROSSPOST_NETWORKS)."""
     if settings.publish_mode != "youtube":
         return DryRunPublisher()
     publisher: Publisher = YouTubePublisher(settings)
-    if settings.facebook_enabled:
-        from .facebook import FacebookPublisher
-        from .multi import MultiPublisher
+    if not settings.crosspost_networks:
+        return publisher
+    if store is None:
+        raise ValueError("a publicação cruzada precisa do StateStore (fila de reenvio)")
+    from .crosspost import CrosspostQueue
+    from .facebook import FacebookPublisher
+    from .instagram import InstagramPublisher
+    from .threads import ThreadsPublisher
 
-        if not settings.facebook_page_id or not settings.facebook_page_access_token:
-            raise ValueError(
-                "FACEBOOK_ENABLED=true exige FACEBOOK_PAGE_ID e FACEBOOK_PAGE_ACCESS_TOKEN"
-            )
-        publisher = MultiPublisher(publisher, {"facebook": FacebookPublisher(settings)})
-    return publisher
+    instagram_token = settings.instagram_access_token or settings.facebook_page_access_token
+    builders = {
+        "facebook": (
+            FacebookPublisher,
+            {"FACEBOOK_PAGE_ID": settings.facebook_page_id,
+             "FACEBOOK_PAGE_ACCESS_TOKEN": settings.facebook_page_access_token},
+        ),
+        "instagram": (
+            InstagramPublisher,
+            {"INSTAGRAM_USER_ID": settings.instagram_user_id,
+             "INSTAGRAM_ACCESS_TOKEN (ou FACEBOOK_PAGE_ACCESS_TOKEN)": instagram_token},
+        ),
+        "threads": (
+            ThreadsPublisher,
+            {"THREADS_USER_ID": settings.threads_user_id,
+             "THREADS_ACCESS_TOKEN": settings.threads_access_token},
+        ),
+    }
+    networks = {}
+    for name in settings.crosspost_networks:
+        cls, required = builders[name]
+        missing = [var for var, value in required.items() if not value]
+        if missing:
+            raise ValueError(f"CROSSPOST_NETWORKS inclui {name}, mas falta: {', '.join(missing)}")
+        networks[name] = cls(settings)
+    return CrosspostQueue(
+        publisher, networks, store, settings.crosspost_max_attempts,
+        settings.crosspost_retry_minutes,
+    )

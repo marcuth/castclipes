@@ -184,13 +184,24 @@ class Settings(BaseSettings):
     """22 = Pessoas e blogs; 24 = Entretenimento; 25 = Notícias e política."""
     youtube_client_secrets_file: Path = Path("secrets/client_secret.json")
     youtube_token_file: Path = Path("secrets/youtube_token.json")
-    facebook_enabled: bool = False
-    """True = também publica na Página do Facebook (longo como vídeo, short como Reel).
-    Só age com PUBLISH_MODE=youtube; em dry_run nada é enviado."""
+    crosspost_networks: CsvList = Field(default_factory=list)
+    """Redes extras além do YouTube: facebook, instagram, threads. Só agem com
+    PUBLISH_MODE=youtube; em dry_run nada é enviado."""
+    crosspost_max_attempts: int = 5
+    crosspost_retry_minutes: int = 15
+    """Espera entre tentativas de uma rede que falhou (multiplicada pelo nº da tentativa)."""
     facebook_page_id: str = ""
     facebook_page_access_token: str = ""
     """Token de acesso DA PÁGINA, de longa duração (publish_video, pages_manage_posts)."""
     facebook_api_version: str = "v23.0"
+    """Versão da Graph API (Facebook e Instagram)."""
+    instagram_user_id: str = ""
+    """ID da conta Instagram Business/Creator ligada à Página."""
+    instagram_access_token: str = ""
+    """Vazio = usa o token da Página do Facebook."""
+    threads_user_id: str = ""
+    threads_access_token: str = ""
+    """Token de longa duração do Threads (expira em 60 dias; renove antes)."""
     max_publish_per_day: int = 5
     """A cota padrão da API (10.000/dia, ~1.600 por upload) comporta cerca de 6 envios/dia."""
 
@@ -242,6 +253,15 @@ class Settings(BaseSettings):
     @classmethod
     def _empty_path_is_none(cls, value: object) -> object:
         return None if value in ("", None) else value
+
+    @field_validator("crosspost_networks")
+    @classmethod
+    def _networks(cls, value: list[str]) -> list[str]:
+        networks = [v.strip().lower() for v in value if v.strip()]
+        unknown = set(networks) - {"facebook", "instagram", "threads"}
+        if unknown:
+            raise ValueError(f"CROSSPOST_NETWORKS inválido: {sorted(unknown)}")
+        return list(dict.fromkeys(networks))
 
     @field_validator("clip_formats")
     @classmethod

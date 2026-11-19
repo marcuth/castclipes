@@ -9,13 +9,11 @@ from castclipes.models import (
     ClipCandidate,
     ClipFormat,
     ClipMetadata,
-    PublishResult,
     RenderedClip,
     SourceVideo,
 )
-from castclipes.publishing.facebook import FacebookError, FacebookPublisher
-from castclipes.publishing.multi import MultiPublisher
-from castclipes.publishing.youtube import DryRunPublisher, YouTubePublisher, create_publisher
+from castclipes.publishing.facebook import FacebookPublisher
+from castclipes.publishing.graph import GraphError
 
 SETTINGS = {
     "_env_file": None, "facebook_page_id": "123", "facebook_page_access_token": "TOKEN",
@@ -152,7 +150,7 @@ def test_api_error_raises_with_meta_message(tmp_path):
     def handler(request):
         return httpx.Response(400, json={"error": {"message": "Token expirado", "code": 190}})
 
-    with pytest.raises(FacebookError, match="Token expirado"):
+    with pytest.raises(GraphError, match="Token expirado"):
         publisher(handler).publish(make_clip(tmp_path, ClipFormat.SHORT))
 
 
@@ -172,49 +170,3 @@ def test_server_errors_are_retried_then_succeed(tmp_path):
 
     assert publisher(handler).publish(make_clip(tmp_path, ClipFormat.SHORT)).video_id == "9"
     assert len(attempts) == 5
-
-
-class Stub:
-    def __init__(self, result=None, error=None):
-        self.result, self.error, self.calls = result, error, 0
-
-    def publish(self, clip, publish_at=None):
-        self.calls += 1
-        if self.error:
-            raise self.error
-        return self.result
-
-
-def test_multi_publisher_keeps_primary_result_and_adds_links(tmp_path):
-    clip = make_clip(tmp_path, ClipFormat.SHORT)
-    primary = Stub(PublishResult("yt1", "https://youtu.be/yt1"))
-    fb = Stub(PublishResult("fb1", "https://www.facebook.com/reel/fb1"))
-    result = MultiPublisher(primary, {"facebook": fb}).publish(clip)
-    assert result.video_id == "yt1" and result.extra == {"facebook": "https://www.facebook.com/reel/fb1"}
-
-
-def test_multi_publisher_swallows_extra_failures(tmp_path):
-    clip = make_clip(tmp_path, ClipFormat.SHORT)
-    primary = Stub(PublishResult("yt1", "u"))
-    result = MultiPublisher(primary, {"facebook": Stub(error=RuntimeError("boom"))}).publish(clip)
-    assert result.video_id == "yt1" and result.extra == {}
-
-
-def test_multi_publisher_does_not_post_extra_when_primary_fails(tmp_path):
-    clip = make_clip(tmp_path, ClipFormat.SHORT)
-    fb = Stub(PublishResult("fb1", "u"))
-    with pytest.raises(RuntimeError):
-        MultiPublisher(Stub(error=RuntimeError("yt caiu")), {"facebook": fb}).publish(clip)
-    assert fb.calls == 0
-
-
-def test_factory_wiring(tmp_path):
-    assert isinstance(create_publisher(Settings(_env_file=None)), DryRunPublisher)
-    dry = Settings(**SETTINGS, facebook_enabled=True)
-    assert isinstance(create_publisher(dry), DryRunPublisher)  # dry_run nunca envia
-    live = Settings(_env_file=None, publish_mode="youtube")
-    assert isinstance(create_publisher(live), YouTubePublisher)
-    both = Settings(**SETTINGS, publish_mode="youtube", facebook_enabled=True)
-    assert isinstance(create_publisher(both), MultiPublisher)
-    with pytest.raises(ValueError, match="FACEBOOK_PAGE_ID"):
-        create_publisher(Settings(_env_file=None, publish_mode="youtube", facebook_enabled=True))

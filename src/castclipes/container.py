@@ -29,6 +29,7 @@ def build_pipeline(settings: Settings) -> Pipeline:
     llm = create_llm_client(settings)
     downloader = VideoDownloader(settings.work_dir, settings.max_source_height)
     selectors = {fmt: _create_selector(settings, llm, fmt) for fmt in ClipFormat}
+    store = StateStore(settings.db_path)
     bus = EventBus()
     bus.subscribe_all(LoggingObserver())
     if settings.notify_webhook_url:
@@ -57,8 +58,8 @@ def build_pipeline(settings: Settings) -> Pipeline:
         aligner=create_word_aligner(settings),
         metadata=LLMMetadataGenerator(llm, settings),
         thumbnails=create_thumbnail_generator(settings),
-        publisher=create_publisher(settings),
-        store=StateStore(settings.db_path),
+        publisher=create_publisher(settings, store),
+        store=store,
         bus=bus,
     )
 

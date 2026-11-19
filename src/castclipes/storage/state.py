@@ -3,8 +3,19 @@
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+
+@dataclass(frozen=True)
+class CrosspostJob:
+    id: int
+    source_id: str
+    format: str
+    network: str
+    attempts: int
+    payload: str
 
 
 class StateStore:
@@ -20,6 +31,13 @@ class StateStore:
                 end REAL NOT NULL, title TEXT, youtube_id TEXT, published_at TEXT,
                 scheduled_for TEXT,
                 PRIMARY KEY (source_id, format, start, end));
+            CREATE TABLE IF NOT EXISTS crossposts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, source_id TEXT NOT NULL,
+                format TEXT NOT NULL, start REAL NOT NULL, end REAL NOT NULL,
+                network TEXT NOT NULL, status TEXT NOT NULL, due_at TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0, url TEXT, error TEXT,
+                payload TEXT NOT NULL, updated_at TEXT NOT NULL,
+                UNIQUE (source_id, format, start, end, network));
             """
         )
 
@@ -92,6 +110,57 @@ class StateStore:
             (today,),
         ).fetchone()
         return int(row[0])
+
+    # ---------- publicação cruzada ----------
+    def enqueue_crosspost(
+        self, source_id: str, fmt: str, start: float, end: float, network: str,
+        due_at: datetime, payload: str,
+    ) -> None:
+        """Ignora se o mesmo corte já está (ou esteve) na fila daquela rede."""
+        self._db.execute(
+            "INSERT OR IGNORE INTO crossposts"
+            "(source_id,format,start,end,network,status,due_at,payload,updated_at) "
+            "VALUES(?,?,?,?,?,'pending',?,?,?)",
+            (source_id, fmt, start, end, network, due_at.isoformat(), payload, self._now()),
+        )
+        self._db.commit()
+
+    def due_crossposts(self, now: datetime) -> list[CrosspostJob]:
+        rows = self._db.execute(
+            "SELECT id,source_id,format,network,attempts,payload FROM crossposts "
+            "WHERE status='pending' AND due_at <= ? ORDER BY due_at, id",
+            (now.isoformat(),),
+        ).fetchall()
+        return [CrosspostJob(*row) for row in rows]
+
+    def finish_crosspost(self, job_id: int, url: str) -> None:
+        self._db.execute(
+            "UPDATE crossposts SET status='done', url=?, error=NULL, updated_at=? WHERE id=?",
+            (url, self._now(), job_id),
+        )
+        self._db.commit()
+
+    def fail_crosspost(
+        self, job_id: int, error: str, retry_at: datetime | None, attempts: int | None = None
+    ) -> None:
+        """`retry_at=None` desiste (status `failed`); senão reagenda."""
+        self._db.execute(
+            "UPDATE crossposts SET status=?, due_at=COALESCE(?, due_at), error=?, "
+            "attempts=COALESCE(?, attempts), updated_at=? WHERE id=?",
+            (
+                "failed" if retry_at is None else "pending",
+                retry_at.isoformat() if retry_at else None, error, attempts, self._now(), job_id,
+            ),
+        )
+        self._db.commit()
+
+    def crosspost_urls(self, source_id: str, fmt: str, start: float, end: float) -> dict[str, str]:
+        rows = self._db.execute(
+            "SELECT network,url FROM crossposts WHERE status='done' AND source_id=? AND format=? "
+            "AND start=? AND end=?",
+            (source_id, fmt, start, end),
+        ).fetchall()
+        return {network: url for network, url in rows if url}
 
     def close(self) -> None:
         self._db.close()

@@ -138,10 +138,15 @@ Veja [ai.md](ai.md).
 | `YOUTUBE_CATEGORY_ID` | 22 | Pessoas e blogs (24 = Entretenimento, 25 = Notícias) |
 | `YOUTUBE_CLIENT_SECRETS_FILE` | secrets/client_secret.json | Credencial OAuth |
 | `YOUTUBE_TOKEN_FILE` | secrets/youtube_token.json | Token salvo |
-| `FACEBOOK_ENABLED` | false | Também publica na Página do Facebook (exige `PUBLISH_MODE=youtube`) |
+| `CROSSPOST_NETWORKS` | vazio | Redes extras: `facebook`, `instagram`, `threads` (exige `PUBLISH_MODE=youtube`) |
+| `CROSSPOST_MAX_ATTEMPTS` | 5 | Tentativas por rede antes de desistir |
+| `CROSSPOST_RETRY_MINUTES` | 15 | Espera entre tentativas (× nº da tentativa) |
 | `FACEBOOK_PAGE_ID` | vazio | ID numérico da Página |
 | `FACEBOOK_PAGE_ACCESS_TOKEN` | vazio | Token de acesso **da Página**, de longa duração |
-| `FACEBOOK_API_VERSION` | v23.0 | Versão da Graph API |
+| `FACEBOOK_API_VERSION` | v23.0 | Versão da Graph API (Facebook e Instagram) |
+| `INSTAGRAM_USER_ID` | vazio | ID da conta Instagram Business/Creator |
+| `INSTAGRAM_ACCESS_TOKEN` | vazio | Vazio = usa o token da Página |
+| `THREADS_USER_ID` / `THREADS_ACCESS_TOKEN` | vazio | Conta e token de longa duração do Threads |
 | `MAX_PUBLISH_PER_DAY` | 5 | Limite de envios por dia |
 | `PUBLISH_SCHEDULE_ENABLED` | false | Liga a fila de postagem |
 | `PUBLISH_TIMEZONE` | America/Sao_Paulo | Fuso dos horários |
