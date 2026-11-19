@@ -74,11 +74,9 @@ Valores vazios em caminhos (`LONG_FRAME_PATH=`) significam "desligado".
 | `SHORT_FRAMING_SAMPLE_FPS` | 5 | Quadros/s analisados para achar rostos |
 | `SHORT_SPLIT_SCREEN` | true | Permite dividir a tela com dois interlocutores |
 | `SHORT_SPLIT_CHANCE` | 0,5 | Probabilidade de usar o split quando há dois rostos |
-| `SHORT_CAPTIONS` | true | Queima legendas palavra a palavra |
+| `SHORT_CAPTIONS` | true | Legenda animada palavra a palavra (Remotion; exige Node/npm) |
 | `SHORT_CAPTIONS_WHISPER` | true | Tempo exato das palavras via Whisper (precisa de `.[whisper]`) |
-| `SHORT_CAPTION_ENGINE` | remotion | `remotion` (animada, precisa de Node/npm) ou `ass`; cai para `ass` se o Remotion falhar |
 | `SHORT_CAPTION_HIGHLIGHT` | #FFD400 | Cor da palavra falada |
-| `SHORT_CAPTION_FONT_PATH` | vazio | Fonte da legenda (vazio = Anton embutida) |
 | `SHORT_CAPTION_MARGIN_V` | 520 | Distância da legenda até a base (px, em 1920) |
 
 ## Render

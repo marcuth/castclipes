@@ -2,14 +2,13 @@
 
 O OpenCV lê o arquivo-fonte e `VerticalComposer` monta cada quadro vertical (enquadramento por
 rosto ou split-screen). Os quadros seguem por pipe para UM ffmpeg, que junta o áudio do trecho,
-aplica a moldura/marca d'água e queima as legendas ASS. Sem MoviePy no caminho dos pixels.
+aplica a moldura/marca d'água e sobrepõe a legenda animada (WebM transparente do Remotion). Sem MoviePy no caminho dos pixels.
 """
 
 from __future__ import annotations
 
 import logging
 import random
-import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterator, Sequence
@@ -20,7 +19,6 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from ..captions.ass import CaptionStyle, generate_ass
 from ..captions.remotion import render_remotion_captions
 from ..config import Settings
 from ..models import Word
@@ -35,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 MIN_SPLIT_RATIO = 0.20
 """Só considera o split-screen se houver dois rostos em pelo menos essa fração do corte."""
-BUNDLED_FONT = Path(__file__).parent.parent / "thumbnails" / "assets" / "fonts" / "Anton-Regular.ttf"
 
 
 class ShortRenderer(Protocol):
@@ -113,9 +110,8 @@ class FfmpegVerticalRenderer:
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
-            overlay = self._remotion_overlay(tmp_dir, words, duration, center)
-            captions = overlay is None and self._write_captions(tmp_dir, words, center)
-            cmd = self._command(source, start, duration, out, fps, captions, overlay)
+            captions = self._render_captions(tmp_dir, words, duration, center)
+            cmd = self._command(source, start, duration, out, fps, captions)
             self._pipe(cmd, tmp_dir, source, start, int(duration * fps), fps, composer)
         return probe(out).duration
 
@@ -132,39 +128,22 @@ class FfmpegVerticalRenderer:
         )
         return use
 
-    def _remotion_overlay(
+    def _render_captions(
         self, tmp: Path, words: Sequence[Word], duration: float, center: list[tuple[float, float]]
     ) -> Path | None:
-        """WebM transparente com a legenda animada, ou None (desligada ou falhou -> ASS)."""
+        """WebM transparente com a legenda animada (Remotion), ou None se desligada.
+        Falha do Remotion propaga: o short não sai sem legenda."""
         s = self._s
-        if not s.short_captions or not words or s.short_caption_engine != "remotion":
+        if not s.short_captions or not words:
             return None
         return render_remotion_captions(
             words, duration, tmp / "captions.webm", center,
             highlight=s.short_caption_highlight, bottom_offset=s.short_caption_margin_v,
         )
 
-    def _write_captions(
-        self, tmp: Path, words: Sequence[Word], center: list[tuple[float, float]]
-    ) -> bool:
-        """Grava `subs.ass` e a fonte em `tmp`. O filtro usa nomes relativos (cwd=tmp) porque o
-        escape de caminhos do Windows (`C:\\`) quebra o filtro `subtitles`."""
-        if not self._s.short_captions or not words:
-            return False
-        font = self._s.short_caption_font_path or BUNDLED_FONT
-        fonts_dir = tmp / "fonts"
-        fonts_dir.mkdir()
-        shutil.copy(font, fonts_dir / font.name)
-        style = CaptionStyle(
-            font_name=_font_family(font), font_file=font,
-            highlight=self._s.short_caption_highlight, margin_v=self._s.short_caption_margin_v,
-        )
-        (tmp / "subs.ass").write_text(generate_ass(words, style, center), encoding="utf-8")
-        return True
-
     def _command(
-        self, source: Path, start: float, duration: float, out: Path, fps: float, captions: bool,
-        caption_overlay: Path | None = None,
+        self, source: Path, start: float, duration: float, out: Path, fps: float,
+        captions: Path | None,
     ) -> list[str]:
         s = self._s
         cmd = [
@@ -185,14 +164,12 @@ class FfmpegVerticalRenderer:
             lines.append(f"[{idx}:v]scale={ow}:{oh},format=rgba{alpha}[ov{j}]")
             lines.append(f"[{current}][ov{j}]overlay=x={x}:y={y}:shortest=1[v{j + 1}]")
             current = f"v{j + 1}"
-        if caption_overlay is not None:
+        if captions is not None:
             idx = 2 + len(self._overlays)
             # decoder libvpx explícito: o vp8 nativo do ffmpeg descarta o canal alfa
-            cmd += ["-c:v", "libvpx", "-i", str(caption_overlay.resolve())]
+            cmd += ["-c:v", "libvpx", "-i", str(captions.resolve())]
             lines.append(f"[{idx}:v]format=rgba[cap]")
             lines.append(f"[{current}][cap]overlay=x=0:y=0:shortest=1[outv]")
-        elif captions:
-            lines.append(f"[{current}]subtitles=subs.ass:fontsdir=fonts[outv]")
         else:
             lines.append(f"[{current}]null[outv]")
         lines.append(f"[1:a]aresample={AUDIO_RATE},aformat=channel_layouts=stereo[outa]")
@@ -235,15 +212,4 @@ class FfmpegVerticalRenderer:
                 f"ffmpeg falhou ({code}):\n"
                 + err_path.read_text(encoding="utf-8", errors="replace")[-2000:]
             )
-
-
-def _font_family(path: Path) -> str:
-    """Nome de família que o libass usa para achar a fonte (lido do próprio arquivo)."""
-    from PIL import ImageFont
-
-    try:
-        family, _ = ImageFont.truetype(str(path), 20).getname()
-        return family
-    except OSError:
-        return path.stem.split("-")[0]
 

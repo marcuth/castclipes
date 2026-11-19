@@ -1,6 +1,6 @@
 # Shorts (9:16)
 
-Código: `vision/` (detecção e rastreamento de rostos, composição do quadro), `captions/` (legendas ASS e tempo por palavra) e `editing/vertical_renderer.py`. A detecção e o rastreamento foram portados do podcast-clipper.
+Código: `vision/` (detecção e rastreamento de rostos, composição do quadro), `captions/` (legenda Remotion e tempo por palavra) e `editing/vertical_renderer.py`. A detecção e o rastreamento foram portados do podcast-clipper.
 
 ## Visão geral
 
@@ -9,7 +9,7 @@ candidato short [start, end] do vídeo completo
   → alinhador de palavras  (tempo de cada palavra, relativo ao corte)
   → analyze_framing        (rostos, planos de câmera, quem fala)
   → VerticalComposer       (cada quadro: bloco único ou split-screen)  → pipe raw BGR
-  → UM ffmpeg: áudio do trecho + moldura + marca d'água + legendas ASS → libx264/aac
+  → UM ffmpeg: áudio do trecho + moldura + marca d'água + legenda Remotion (overlay) → libx264/aac
 ```
 
 Shorts **não** passam pelo corte de silêncio (as legendas dependem do tempo original), nem recebem CTA ou outro.
@@ -45,7 +45,7 @@ Duas etapas independentes:
 
 `FallbackWordAligner` tenta o Whisper e cai para a estimativa se faltar o pacote, houver erro ou nenhuma palavra.
 
-**2. ASS** (`ass.py`): as palavras viram grupos de até 3 (quebra em pausas ≥ 0,6 s, fim de frase e ~18 caracteres). Cada palavra falada vira um evento com o grupo inteiro e **só ela na cor de destaque** (`SHORT_CAPTION_HIGHLIGHT`); o primeiro evento do grupo tem a animação de entrada (*pop*). O tamanho da fonte é ajustado para o grupo nunca sair da tela. Fonte: Anton (OFL), embutida, copiada para um diretório temporário e passada ao filtro `subtitles` com `fontsdir` (nomes relativos, porque o escape de caminhos do Windows quebra o filtro). Durante o split-screen a legenda vai para o centro, sobre a divisória.
+**2. Remotion** (`captions/remotion.py` + projeto `remotion/`): as palavras viram páginas de até 2 palavras (Poppins 800 em caixa alta, contorno preto); a palavra falada acende na cor de destaque (`SHORT_CAPTION_HIGHLIGHT`) com *pop*, e cada página entra com *spring*. O tamanho da fonte é ajustado para a página caber na tela. O Remotion renderiza um WebM transparente (VP8 + alfa) com a duração do short, e o ffmpeg o sobrepõe (decoder `libvpx` explícito: o vp8 nativo descarta o alfa). Durante o split-screen a legenda vai para o centro, sobre a divisória; fora dele fica a `SHORT_CAPTION_MARGIN_V` px da base. Exige Node/npm (a 1ª execução faz `npm install` em `remotion/`); se o Remotion falhar, o short falha (não há legenda alternativa).
 
 ## Moldura
 
@@ -53,7 +53,7 @@ Duas etapas independentes:
 
 ## Render
 
-Os quadros compostos seguem por pipe (BGR cru) para um único ffmpeg, que lê o áudio do trecho direto do arquivo-fonte, aplica moldura e legendas e codifica. O OpenCV lê o arquivo-fonte em sequência e reamostra para `RENDER_FPS` (repete ou pula quadros se o fps de origem for diferente). Se o ffmpeg falhar, o erro traz o final do stderr.
+Os quadros compostos seguem por pipe (BGR cru) para um único ffmpeg, que lê o áudio do trecho direto do arquivo-fonte, aplica moldura, sobrepõe a legenda e codifica. O OpenCV lê o arquivo-fonte em sequência e reamostra para `RENDER_FPS` (repete ou pula quadros se o fps de origem for diferente). Se o ffmpeg falhar, o erro traz o final do stderr.
 
 ## Variáveis relacionadas
 

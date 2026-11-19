@@ -1,4 +1,4 @@
-"""Shorts: legendas ASS, tempo por palavra, composição vertical e render de ponta a ponta."""
+"""Shorts: palavras das legendas, tempo por palavra, composição vertical e render de ponta a ponta."""
 
 import itertools
 import random
@@ -8,14 +8,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from castclipes.captions.ass import (
-    CaptionStyle,
-    ass_color,
-    chunk_words,
-    format_time,
-    generate_ass,
-    normalize_words,
-)
+from castclipes.captions import remotion as captions_remotion
+from castclipes.captions.remotion import CaptionError, normalize_words
 from castclipes.captions.words import (
     FallbackWordAligner,
     TranscriptWordAligner,
@@ -43,20 +37,6 @@ needs_ffmpeg = pytest.mark.skipif(not _ffmpeg_works(), reason="ffmpeg indisponí
 
 
 # ---------- legendas ----------
-def test_ass_color_and_time():
-    assert ass_color("#FFD400") == "&H0000D4FF&"  # ASS usa BGR
-    assert format_time(3725.456) == "1:02:05.46"
-    assert format_time(-1) == "0:00:00.00"
-
-
-def test_chunking_breaks_on_size_pause_and_sentence_end():
-    words = [Word(i * 0.3, i * 0.3 + 0.25, w) for i, w in enumerate(["eu", "fui", "lá", "ontem."])]
-    chunks = chunk_words(words)
-    assert [" ".join(w.text for w in c) for c in chunks] == ["eu fui lá", "ontem."]
-    paused = [Word(0, 0.2, "a"), Word(1.5, 1.7, "b")]
-    assert len(chunk_words(paused)) == 2
-
-
 def test_normalize_words_fixes_overlaps_and_empty():
     words = [Word(1.0, 3.0, "b"), Word(0.0, 1.5, "a"), Word(2.0, 2.0, "  ")]
     fixed = normalize_words(words)
@@ -64,32 +44,11 @@ def test_normalize_words_fixes_overlaps_and_empty():
     assert fixed[0].end <= fixed[1].start
 
 
-def test_generate_ass_highlights_active_word_and_centers_in_split():
-    words = [Word(0.0, 0.4, "olá"), Word(0.4, 0.9, "mundo"), Word(5.0, 5.5, "fim")]
-    doc = generate_ass(words, CaptionStyle(highlight="#FF0000"), center_ranges=[(4.0, 6.0)])
-    lines = [ln for ln in doc.splitlines() if ln.startswith("Dialogue")]
-    assert len(lines) == 3
-    assert "\\c&H000000FF&}OLÁ" in lines[0] and "MUNDO" in lines[0]  # 1ª palavra acesa
-    assert "\\c&H000000FF&}MUNDO" in lines[1]
-    assert "\\fscx0" in lines[0] and "\\fscx0" not in lines[1]  # só o 1º evento do grupo tem o pop
-    assert "\\an5" not in lines[0] and "\\an5" in lines[2]  # centralizada durante o split
-    assert "PlayResX: 1080" in doc and "Style: Caption,Anton" in doc
-
-
-def test_generated_ass_is_accepted_by_ffmpeg(tmp_path):
-    if not _ffmpeg_works():
-        pytest.skip("ffmpeg indisponível")
-    (tmp_path / "s.ass").write_text(
-        generate_ass([Word(0, 0.5, "teste")], CaptionStyle()), encoding="utf-8"
-    )
-    proc = subprocess.run(
-        [ffmpeg_exe(), "-loglevel", "error", "-f", "lavfi", "-i", "color=c=black:s=1080x1920:d=1",
-         "-vf", "subtitles=s.ass", "-f", "null", "-"],
-        cwd=tmp_path, capture_output=True, text=True, check=False,
-    )
-    if "No such filter" in proc.stderr:
-        pytest.skip("ffmpeg sem libass")
-    assert proc.returncode == 0, proc.stderr
+def test_remotion_without_node_raises(tmp_path, monkeypatch):
+    monkeypatch.setattr(captions_remotion.shutil, "which", lambda name: None)
+    with pytest.raises(CaptionError):
+        captions_remotion.render_remotion_captions([Word(0, 0.5, "a")], 1.0, tmp_path / "c.webm")
+    assert captions_remotion.render_remotion_captions([], 1.0, tmp_path / "c.webm") is None
 
 
 # ---------- tempo por palavra ----------
@@ -197,6 +156,20 @@ def test_read_frames_resamples_to_requested_fps(tmp_path):
     assert frames[0][1].shape == (360, 640, 3)
 
 
+def _fake_captions(words, duration, out, center_ranges=(), **kwargs):
+    """Overlay transparente com uma faixa verde opaca (stand-in do Remotion; sem Node nos testes)."""
+    frames = out.with_name("cap_%03d.png")
+    img = Image.new("RGBA", (540, 960), (0, 0, 0, 0))
+    img.paste((0, 255, 0, 255), (0, 440, 540, 520))
+    for i in range(int(duration * 25) + 1):
+        img.save(str(frames) % i)
+    subprocess.run(
+        [ffmpeg_exe(), "-loglevel", "error", "-y", "-framerate", "25", "-i", str(frames),
+         "-c:v", "libvpx", "-pix_fmt", "yuva420p", "-auto-alt-ref", "0", str(out)], check=True,
+    )
+    return out
+
+
 @needs_ffmpeg
 def test_vertical_renderer_end_to_end_with_frame_and_captions(tmp_path, monkeypatch):
     source = _make_source(tmp_path)
@@ -211,8 +184,8 @@ def test_vertical_renderer_end_to_end_with_frame_and_captions(tmp_path, monkeypa
     settings = Settings(
         _env_file=None, data_dir=tmp_path, short_width=540, short_height=960, render_fps=25,
         render_preset="ultrafast", short_framing_sample_fps=2,
-        short_caption_engine="ass",
     )
+    monkeypatch.setattr(vertical_renderer, "render_remotion_captions", _fake_captions)
     renderer = FfmpegVerticalRenderer(
         settings, [ImageOverlay(frame_png, "center", 1.0, 1.0, 0, "stretch")], random.Random(1)
     )
@@ -230,6 +203,10 @@ def test_vertical_renderer_end_to_end_with_frame_and_captions(tmp_path, monkeypa
     )
     pixel = Image.open(frame).convert("RGB").getpixel((270, 5))
     assert pixel[0] > 200 and pixel[1] < 60 and pixel[2] > 200  # moldura magenta por cima
+    shot = Image.open(frame).convert("RGB")
+    inside, outside = shot.getpixel((270, 480)), shot.getpixel((270, 700))
+    assert inside[1] > 200 and inside[0] < 80 and inside[2] < 80  # legenda (overlay) por cima
+    assert outside != inside  # fora da faixa o overlay é transparente
 
 
 @needs_ffmpeg
@@ -248,17 +225,20 @@ def test_vertical_renderer_reports_ffmpeg_failure(tmp_path, monkeypatch):
 
 
 @needs_ffmpeg
-def test_vertical_renderer_falls_back_to_ass_when_remotion_fails(tmp_path, monkeypatch):
+def test_vertical_renderer_fails_when_remotion_fails(tmp_path, monkeypatch):
     source = _make_source(tmp_path)
     monkeypatch.setattr(
         vertical_renderer, "analyze_framing", lambda *a, **k: FramingPlan(640, 360)
     )
-    monkeypatch.setattr(vertical_renderer, "render_remotion_captions", lambda *a, **k: None)
+
+    def boom(*a, **k):
+        raise CaptionError("sem node")
+
+    monkeypatch.setattr(vertical_renderer, "render_remotion_captions", boom)
     settings = Settings(
         _env_file=None, data_dir=tmp_path, short_width=540, short_height=960, render_fps=25,
         render_preset="ultrafast", short_framing_sample_fps=2,
     )
     renderer = FfmpegVerticalRenderer(settings, [], random.Random(1))
-    out = tmp_path / "out" / "short.mp4"
-    renderer.render(source, 1.0, 3.0, out, [Word(0.0, 0.5, "olá")])
-    assert probe(out).has_audio
+    with pytest.raises(CaptionError):
+        renderer.render(source, 1.0, 3.0, tmp_path / "out" / "short.mp4", [Word(0.0, 0.5, "olá")])

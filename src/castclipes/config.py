@@ -113,17 +113,12 @@ class Settings(BaseSettings):
     short_split_chance: float = 0.5
     """Probabilidade de usar o split-screen num short em que há dois rostos (0 a 1)."""
     short_captions: bool = True
-    """Queima legendas palavra a palavra (ASS) nos shorts."""
+    """Legenda animada palavra a palavra (Remotion; precisa de Node/npm) nos shorts."""
     short_captions_whisper: bool = True
     """Re-transcreve cada short com Whisper para ter o tempo exato de cada palavra. Sem o extra
     `whisper` (ou com False), o tempo das palavras é estimado a partir da legenda do vídeo."""
-    short_caption_engine: Literal["remotion", "ass"] = "remotion"
-    """`remotion` = legenda animada (precisa de Node/npm; renderiza um overlay transparente).
-    `ass` = legenda queimada pelo ffmpeg. Se o Remotion falhar, cai para `ass`."""
     short_caption_highlight: str = "#FFD400"
     """Cor da palavra que está sendo falada."""
-    short_caption_font_path: Path | None = None
-    """Vazio = Anton (OFL), embutida no pacote."""
     short_caption_margin_v: int = 520
     """Distância da legenda até a base do vídeo (px, em 1920 de altura)."""
 
@@ -229,7 +224,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "watermark_path", "cta_video_path", "outro_path", "thumbnail_font_path", "thumbnail_logo_path",
-        "long_frame_path", "short_frame_path", "short_caption_font_path",
+        "long_frame_path", "short_frame_path",
         mode="before",
     )
     @classmethod

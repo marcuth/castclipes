@@ -65,7 +65,7 @@ Observers incluídos: `LoggingObserver` (log legível em português) e `WebhookO
 
 ## Tempos absolutos e relativos
 
-Detector de silêncio, renderers e thumbnails recebem tempos **absolutos** do arquivo completo baixado. No short, o alinhador de palavras devolve tempo **relativo ao corte** (t=0 é o início dele), que é o que o ASS usa. `plan_keep_ranges` trabalha em tempo **relativo ao corte** e o pipeline soma `candidate.start`. `editing/insertion.py::to_relative` converte o ponto de CTA (absoluto) para o tempo do corte já sem silêncios.
+Detector de silêncio, renderers e thumbnails recebem tempos **absolutos** do arquivo completo baixado. No short, o alinhador de palavras devolve tempo **relativo ao corte** (t=0 é o início dele), que é o que a legenda do Remotion usa. `plan_keep_ranges` trabalha em tempo **relativo ao corte** e o pipeline soma `candidate.start`. `editing/insertion.py::to_relative` converte o ponto de CTA (absoluto) para o tempo do corte já sem silêncios.
 
 ## Decisões de design
 

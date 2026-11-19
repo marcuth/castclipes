@@ -41,7 +41,7 @@ src/castclipes/
   analysis/                  triagem, seleção por formato, regras determinísticas
   editing/                   silêncio, CTA, overlays, renderers (long e vertical)
   vision/                    rostos, rastreamento e composição do quadro vertical
-  captions/                  tempo por palavra e legendas ASS dos shorts
+  captions/                  tempo por palavra e legenda (Remotion) dos shorts
   metadata/                  título, descrição, tags
   thumbnails/                frame + rosto + template (só long)
   publishing/                YouTube, dry-run, fila de postagem
