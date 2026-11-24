@@ -9,7 +9,7 @@ candidato short [start, end] do vídeo completo
   → alinhador de palavras  (tempo de cada palavra, relativo ao corte)
   → analyze_framing        (rostos, planos de câmera, quem fala)
   → VerticalComposer       (cada quadro: bloco único ou split-screen)  → pipe raw BGR
-  → UM ffmpeg: áudio do trecho + moldura + marca d'água + legenda Remotion (overlay) → libx264/aac
+  → UM ffmpeg: áudio do trecho + moldura + legenda Remotion (overlay) → libx264/aac
 ```
 
 Shorts **não** passam pelo corte de silêncio (as legendas dependem do tempo original), nem recebem CTA ou outro.
@@ -49,7 +49,7 @@ Duas etapas independentes:
 
 ## Moldura
 
-`SHORT_FRAME_PATH` (PNG com transparência, **1080x1920**) é esticada sobre o vídeo vertical, **antes** das legendas, e a marca d'água (`WATERMARK_*`) vai por cima da moldura. Uma moldura 16:9 esticada num short fica distorcida: use a proporção do formato.
+`SHORT_FRAME_PATH` (PNG com transparência, **1080x1920**) é esticada sobre o vídeo vertical, **antes** das legendas. Uma moldura 16:9 esticada num short fica distorcida: use a proporção do formato.
 
 ## Render
 
@@ -57,7 +57,7 @@ Os quadros compostos seguem por pipe (BGR cru) para um único ffmpeg, que lê o 
 
 ## Variáveis relacionadas
 
-`SHORT_*`, `MAX_SHORTS_PER_VIDEO`, `SHORT_FRAME_PATH`, `WATERMARK_*`, `WHISPER_*`, `RENDER_*`.
+`SHORT_*`, `MAX_SHORTS_PER_VIDEO`, `SHORT_FRAME_PATH`, `WHISPER_*`, `RENDER_*`.
 
 ## Limites conhecidos
 

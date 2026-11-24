@@ -22,12 +22,10 @@ def test_positions():
 
 def test_settings_csv_and_empty_paths(monkeypatch):
     monkeypatch.setenv("SOURCE_LIVE_PLAYLIST_IDS", "UULV1, UC2")
-    monkeypatch.setenv("WATERMARK_PATH", "")
     monkeypatch.setenv("LONG_MIN_SECONDS", "300")
     monkeypatch.setenv("CLIP_FORMATS", "Short")
     s = Settings(_env_file=None)
     assert s.source_live_playlist_ids == ["UULV1", "UC2"]
-    assert s.watermark_path is None
     assert s.long_min_seconds == 300 and s.long_max_seconds == 2400
     assert s.clip_formats == ["short"]
 
@@ -84,13 +82,12 @@ def test_overlays_are_chosen_per_format(tmp_path):
 
     s = Settings(
         _env_file=None, long_frame_path=tmp_path / "l.png", short_frame_path=tmp_path / "s.png",
-        watermark_path=tmp_path / "w.png",
     )
     long_layers = create_overlays(s, ClipFormat.LONG)
     short_layers = create_overlays(s, ClipFormat.SHORT)
-    assert [o.path.name for o in long_layers] == ["l.png", "w.png"]
-    assert [o.path.name for o in short_layers] == ["s.png", "w.png"]
-    # a moldura sempre estica ao vídeo; a marca d'água respeita a largura configurada
+    assert [o.path.name for o in long_layers] == ["l.png"]
+    assert [o.path.name for o in short_layers] == ["s.png"]
+    # a moldura sempre estica ao vídeo
     assert long_layers[0].placement((1920, 1080), (10, 10)) == ((1920, 1080), (0, 0))
     assert short_layers[0].placement((1080, 1920), (10, 10)) == ((1080, 1920), (0, 0))
     assert create_overlays(Settings(_env_file=None), ClipFormat.SHORT) == []

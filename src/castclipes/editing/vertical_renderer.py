@@ -2,7 +2,7 @@
 
 O OpenCV lê o arquivo-fonte e `VerticalComposer` monta cada quadro vertical (enquadramento por
 rosto ou split-screen). Os quadros seguem por pipe para UM ffmpeg, que junta o áudio do trecho,
-aplica a moldura/marca d'água e sobrepõe a legenda animada (WebM transparente do Remotion). Sem MoviePy no caminho dos pixels.
+aplica a moldura e sobrepõe a legenda animada (WebM transparente do Remotion). Sem MoviePy no caminho dos pixels.
 """
 
 from __future__ import annotations

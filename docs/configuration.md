@@ -51,18 +51,12 @@ Valores vazios em caminhos (`LONG_FRAME_PATH=`) significam "desligado".
 | `SILENCE_MIN_DURATION_SECONDS` | 0,8 | Só pausas maiores são encurtadas |
 | `SILENCE_KEEP_PADDING_SECONDS` | 0,25 | Parte da pausa mantida em cada ponta |
 
-## Molduras, marca d'água, CTA e outro
+## Molduras, CTA e outro
 
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `LONG_FRAME_PATH` | vazio | Moldura PNG 1920x1080 sobre o corte longo (esticada ao vídeo) |
 | `SHORT_FRAME_PATH` | vazio | Moldura PNG 1080x1920 sobre o short (esticada ao vídeo) |
-| `WATERMARK_PATH` | vazio | PNG com transparência, por cima da moldura, nos dois formatos |
-| `WATERMARK_FIT` | width | `width` ou `stretch` (tela cheia) |
-| `WATERMARK_POSITION` | top-right | Posição (ignorada em `stretch`) |
-| `WATERMARK_WIDTH_PCT` | 0,14 | Largura relativa (ignorada em `stretch`) |
-| `WATERMARK_OPACITY` | 0,85 | Opacidade |
-| `WATERMARK_MARGIN_PX` | 24 | Margem (ignorada em `stretch`) |
 | `CTA_VIDEO_PATH` | vazio | Vídeo inserido no meio do corte longo |
 | `CTA_POSITION_PCT` | 0,5 | Ponto do corte (0 a 1) onde o CTA entra |
 | `CTA_MIN_CLIP_SECONDS` | 480 | Cortes longos mais curtos não recebem CTA |

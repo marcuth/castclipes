@@ -8,12 +8,6 @@ from typing import Annotated, Literal
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-Position = Literal[
-    "top-left", "top-right", "bottom-left", "bottom-right", "center", "top-center", "bottom-center"
-]
-OverlayFit = Literal["width", "stretch"]
-
-
 def _split_csv(value: object) -> object:
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
@@ -90,15 +84,6 @@ class Settings(BaseSettings):
     """Moldura PNG com transparência (16:9) sobre os cortes longos, esticada ao vídeo."""
     short_frame_path: Path | None = None
     """Moldura PNG com transparência (9:16) sobre os shorts, esticada ao vídeo."""
-    watermark_path: Path | None = None
-    """Marca d'água opcional, aplicada por cima da moldura nos dois formatos."""
-    watermark_position: Position = "top-right"
-    watermark_width_pct: float = 0.14
-    watermark_opacity: float = 0.85
-    watermark_margin_px: int = 24
-    watermark_fit: OverlayFit = "width"
-    """stretch = ocupa o vídeo inteiro (esticada à largura e altura do vídeo); ignora
-    posição, largura e margem."""
     cta_video_path: Path | None = None
     """Vídeo de CTA/anúncio inserido no meio do corte longo (sem overlays), numa pausa entre frases."""
     cta_position_pct: float = 0.5
@@ -246,7 +231,7 @@ class Settings(BaseSettings):
         return _split_csv(value)
 
     @field_validator(
-        "watermark_path", "cta_video_path", "outro_path", "thumbnail_font_path", "thumbnail_logo_path",
+        "cta_video_path", "outro_path", "thumbnail_font_path", "thumbnail_logo_path",
         "long_frame_path", "short_frame_path",
         mode="before",
     )

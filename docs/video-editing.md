@@ -30,23 +30,7 @@ Objetivo: encurtar pausas longas sem destruir o ritmo natural da fala (preserva 
 
 Um PNG com transparência desenhado sobre **o corpo do vídeo** (nunca sobre o CTA nem o outro).
 
-| `WATERMARK_FIT` | Comportamento |
-|---|---|
-| `width` | Largura = `WATERMARK_WIDTH_PCT` do vídeo, aspecto mantido, posicionado por `WATERMARK_POSITION` e `WATERMARK_MARGIN_PX` |
-| `stretch` | O PNG é esticado à largura e altura do vídeo, em qualquer resolução (moldura). Ignora posição, largura e margem |
-
-Configuração típica de moldura em tela cheia:
-
-```
-WATERMARK_PATH=assets/images/moldura.png
-WATERMARK_POSITION=center
-WATERMARK_WIDTH_PCT=1.0
-WATERMARK_OPACITY=1
-WATERMARK_MARGIN_PX=0
-WATERMARK_FIT=stretch
-```
-
-Com `stretch`, um vídeo de 720p recebe a moldura redimensionada para 1280×720 automaticamente. Se a proporção da moldura for diferente da do vídeo, ela será deformada; use uma moldura 16:9.
+O PNG é redimensionado para preencher o vídeo. Se a proporção da moldura for diferente da do vídeo, ela será deformada; use uma moldura 16:9.
 
 ## CTA como vídeo no meio do corte
 
@@ -100,4 +84,4 @@ Desempenho observado: ~12 s com ffmpeg contra ~228 s com moviepy para o mesmo co
 
 ## Variáveis relacionadas
 
-`SILENCE_*`, `LONG_FRAME_PATH`, `WATERMARK_*`, `CTA_VIDEO_PATH`, `CTA_POSITION_PCT`, `CTA_MIN_CLIP_SECONDS`, `OUTRO_PATH`, `RENDER_*`, `MAX_SOURCE_HEIGHT`.
+`SILENCE_*`, `LONG_FRAME_PATH`, `CTA_VIDEO_PATH`, `CTA_POSITION_PCT`, `CTA_MIN_CLIP_SECONDS`, `OUTRO_PATH`, `RENDER_*`, `MAX_SOURCE_HEIGHT`.

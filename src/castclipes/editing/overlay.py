@@ -1,4 +1,4 @@
-"""Overlays em PNG: moldura (por formato) e marca d'água."""
+"""Molduras em PNG por formato."""
 
 from __future__ import annotations
 
@@ -76,17 +76,9 @@ class ImageOverlay:
 
 
 def create_overlays(settings: Settings, fmt: ClipFormat) -> list[ImageOverlay]:
-    """Simple Factory: moldura do formato e marca d'água, na ordem de empilhamento (a moldura
-    fica embaixo; a marca d'água por cima)."""
+    """Simple Factory: moldura do formato."""
     overlays: list[ImageOverlay] = []
     frame = settings.long_frame_path if fmt is ClipFormat.LONG else settings.short_frame_path
     if frame:
         overlays.append(ImageOverlay(frame, "center", 1.0, 1.0, 0, "stretch"))
-    if settings.watermark_path:
-        overlays.append(
-            ImageOverlay(
-                settings.watermark_path, settings.watermark_position, settings.watermark_width_pct,
-                settings.watermark_opacity, settings.watermark_margin_px, settings.watermark_fit,
-            )
-        )
     return overlays
