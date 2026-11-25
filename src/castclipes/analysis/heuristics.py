@@ -127,12 +127,17 @@ def score_units(
     raw: list[tuple[float, float, str]],
     skip_intro_seconds: float,
     heatmap: tuple[tuple[float, float, float], ...] = (),
+    skip_outro_seconds: float = 0,
+    video_duration_seconds: float | None = None,
 ) -> list[Unit]:
+    video_end = video_duration_seconds or (raw[-1][1] if raw else 0)
+    outro_start = video_end - skip_outro_seconds
     units: list[Unit] = []
     previous_end: float | None = None
     for start, end, text in raw:
         norm = normalize(text)
-        blocked = start < skip_intro_seconds or bool(BLOCKED.search(norm))
+        in_outro = skip_outro_seconds > 0 and end > outro_start
+        blocked = start < skip_intro_seconds or in_outro or bool(BLOCKED.search(norm))
         score = 0.0
         if not blocked:
             words = len(text.split())
@@ -179,14 +184,19 @@ class HeuristicClipSelector:
         constraints: ClipConstraints,
         target_seconds: int,
         skip_intro_seconds: int = 120,
+        skip_outro_seconds: int = 0,
     ) -> None:
         self._format = fmt
         self._rules = constraints
         self._target = target_seconds
         self._skip_intro = skip_intro_seconds
+        self._skip_outro = skip_outro_seconds
 
     def select(self, video: SourceVideo, transcript: Transcript) -> list[ClipCandidate]:
-        units = score_units(build_units(transcript), self._skip_intro, video.heatmap)
+        units = score_units(
+            build_units(transcript), self._skip_intro, video.heatmap,
+            self._skip_outro, video.duration_seconds,
+        )
         if not units:
             return []
         scored = self._windows(units)

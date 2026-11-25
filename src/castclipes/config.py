@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     Triagem e metadados continuam usando a IA."""
     heuristic_skip_intro_seconds: int = 120
     """No modo `heuristics`, ignora os primeiros N segundos da live (abertura, avisos, espera)."""
+    heuristic_skip_outro_seconds: int = 0
+    """No modo `heuristics`, ignora os últimos N segundos da live (despedida, créditos)."""
     selection_window_seconds: int = 3600
     selection_window_overlap_seconds: int = 300
     """Transcrições longas são analisadas em janelas para caber no contexto da IA."""

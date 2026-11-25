@@ -78,7 +78,10 @@ def _create_selector(settings: Settings, llm: LLMClient, fmt: ClipFormat) -> Cli
     )
     target = settings.long_target_seconds if long else settings.short_target_seconds
     if settings.selector_engine == "heuristics":
-        return HeuristicClipSelector(fmt, rules, target, settings.heuristic_skip_intro_seconds)
+        return HeuristicClipSelector(
+            fmt, rules, target, settings.heuristic_skip_intro_seconds,
+            settings.heuristic_skip_outro_seconds,
+        )
     return LLMClipSelector(
         llm, fmt, rules, target, settings.selection_window_seconds,
         settings.selection_window_overlap_seconds,
