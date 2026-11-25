@@ -17,6 +17,7 @@ import httpx
 from ..config import Settings
 from ..models import ClipFormat, PublishResult, RenderedClip
 from .graph import GraphClient, GraphError
+from .threads_token import ThreadsTokenManager
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,18 @@ class ThreadsPublisher:
         self, settings: Settings, client: httpx.Client | None = None, sleep=time.sleep
     ) -> None:
         self._user = settings.threads_user_id
-        self._api = GraphClient(settings.threads_access_token, client, sleep)
+        self._client = client or httpx.Client(timeout=httpx.Timeout(120.0, connect=30.0))
+        self._tokens = ThreadsTokenManager(
+            settings.threads_access_token,
+            settings.data_dir / "threads_token.json",
+            self._client,
+        )
+        self._api = GraphClient(self._tokens.token, self._client, sleep)
+
+    def maintain(self) -> None:
+        """Renova o token quando necessário; chamado em cada rodada do pipeline."""
+        self._tokens.refresh_if_due()
+        self._api.token = self._tokens.token
 
     def publish(self, clip: RenderedClip, publish_at: datetime | None = None) -> PublishResult:
         meta = clip.metadata
@@ -43,6 +55,7 @@ class ThreadsPublisher:
             raise ValueError("RenderedClip sem metadata")
         if not link:
             raise GraphError("sem link do YouTube para anexar ao post do Threads")
+        self.maintain()
         container = self._api.post(
             f"{GRAPH}/{self._user}/threads",
             data={"media_type": "TEXT", "text": meta.title[:TEXT_LIMIT], "link_attachment": link},

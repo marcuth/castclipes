@@ -103,9 +103,9 @@ Limites do Reel: Facebook e Instagram aceitam Reels de poucos segundos até ~90 
 5. Chame `/{page-id}?fields=instagram_business_account`: o `id` retornado é o `INSTAGRAM_USER_ID`.
 6. Com o app em modo de desenvolvimento, só administradores/testadores publicam; para uso real pode ser preciso a *App Review* das permissões.
 
-**Threads:** crie um app com o caso de uso **Threads API**, adicione sua conta como testadora, autorize `threads_basic` e `threads_content_publish` e troque por um token de longa duração. O `THREADS_USER_ID` vem de `GET https://graph.threads.net/v1.0/me`. **O token expira em 60 dias**: renove antes (`GET https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=...`) e atualize o `.env`.
+**Threads:** crie um app com o caso de uso **Threads API**, adicione sua conta como testadora, autorize `threads_basic` e `threads_content_publish` e coloque o token de longa duração inicial em `THREADS_ACCESS_TOKEN`. O `THREADS_USER_ID` vem de `GET https://graph.threads.net/v1.0/me`. O app renova o token automaticamente no início do primeiro uso e depois 15 dias antes da validade terminar. O token renovado e sua validade ficam em `DATA_DIR/threads_token.json` (por padrão `data/threads_token.json`); esse arquivo é usado após reinícios, e o `.env` continua como cópia inicial. O comando `watch` verifica a renovação a cada rodada. Se o token inicial expirar ou for revogado, gere outro e substitua o valor em `THREADS_ACCESS_TOKEN`; o app detecta a mudança e volta a usá-lo.
 
-Os tokens ficam só no `.env` (no `.gitignore`); nunca os coloque no repositório.
+O token inicial fica no `.env`; o token renovado fica em `DATA_DIR/threads_token.json`. Ambos são locais e não devem ser colocados no repositório.
 
 ## Webhook de notificação
 

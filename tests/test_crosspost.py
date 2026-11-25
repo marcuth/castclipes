@@ -95,13 +95,17 @@ def test_threads_posts_text_with_youtube_link(tmp_path):
     def handler(request):
         url = str(request.url).split("?")[0]
         calls.append(url)
+        if url.endswith("/refresh_access_token"):
+            assert request.url.params["grant_type"] == "th_refresh_token"
+            assert request.url.params["access_token"] == "TT"
+            return httpx.Response(200, json={"access_token": "TT2", "expires_in": 5184000})
         if request.method == "GET":
             return httpx.Response(200, json={"permalink": "https://threads.net/@x/post/1"})
         if url.endswith("/th1/threads"):
             data = body(request)
             assert data["media_type"] == "TEXT" and data["text"] == "Título"
             assert data["link_attachment"] == "https://youtu.be/yt1"
-            assert data["access_token"] == "TT"
+            assert data["access_token"] == "TT2"
             return httpx.Response(200, json={"id": "CR"})
         assert body(request)["creation_id"] == "CR"
         return httpx.Response(200, json={"id": "P1"})
@@ -109,7 +113,8 @@ def test_threads_posts_text_with_youtube_link(tmp_path):
     clip = make_clip(tmp_path)
     clip.extra["youtube_url"] = "https://youtu.be/yt1"
     pub = ThreadsPublisher(
-        Settings(**CREDS), httpx.Client(transport=httpx.MockTransport(handler)), sleep=lambda s: None
+        Settings(**CREDS, data_dir=tmp_path / "data"),
+        httpx.Client(transport=httpx.MockTransport(handler)), sleep=lambda s: None
     )
     assert pub.publish(clip).url == "https://threads.net/@x/post/1"
     with pytest.raises(GraphError, match="link do YouTube"):

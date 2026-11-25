@@ -140,7 +140,7 @@ Veja [ai.md](ai.md).
 | `FACEBOOK_API_VERSION` | v23.0 | Versão da Graph API (Facebook e Instagram) |
 | `INSTAGRAM_USER_ID` | vazio | ID da conta Instagram Business/Creator |
 | `INSTAGRAM_ACCESS_TOKEN` | vazio | Vazio = usa o token da Página |
-| `THREADS_USER_ID` / `THREADS_ACCESS_TOKEN` | vazio | Conta e token de longa duração do Threads |
+| `THREADS_USER_ID` / `THREADS_ACCESS_TOKEN` | vazio | Conta e token inicial de longa duração do Threads; tokens renovados ficam em `DATA_DIR/threads_token.json` |
 | `MAX_PUBLISH_PER_DAY` | 5 | Limite de envios por dia |
 | `PUBLISH_SCHEDULE_ENABLED` | false | Liga a fila de postagem |
 | `PUBLISH_TIMEZONE` | America/Sao_Paulo | Fuso dos horários |

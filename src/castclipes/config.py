@@ -188,7 +188,7 @@ class Settings(BaseSettings):
     """Vazio = usa o token da Página do Facebook."""
     threads_user_id: str = ""
     threads_access_token: str = ""
-    """Token de longa duração do Threads (expira em 60 dias; renove antes)."""
+    """Token inicial do Threads; renovações automáticas ficam em DATA_DIR/threads_token.json."""
     max_publish_per_day: int = 5
     """A cota padrão da API (10.000/dia, ~1.600 por upload) comporta cerca de 6 envios/dia."""
 

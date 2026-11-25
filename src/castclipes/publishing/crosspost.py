@@ -115,6 +115,13 @@ class CrosspostQueue:
     def flush(self) -> int:
         """Envia os registros vencidos. Devolve quantos saíram."""
         sent = 0
+        for name, network in self._networks.items():
+            maintain = getattr(network, "maintain", None)
+            if maintain is not None:
+                try:
+                    maintain()
+                except Exception:
+                    logger.exception("Falha ao renovar credenciais de %s", name)
         for job in self._store.due_crossposts(self._now()):
             sent += self._run(job)
         return sent
